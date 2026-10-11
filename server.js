@@ -1304,6 +1304,158 @@ app.post("/api/gen-duo-ff", requireAuth, async (req, res) => {
   }
 });
 
+/* ============================================================
+   /api/brat-vid — Brat Video Generator
+   ============================================================ */
+const BRAT_VID_API_BASE = "https://apii.nexadev.my.id/bratvid2";
+
+app.post("/api/brat-vid", requireAuth, async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/brat-vid] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (3/menit — video lebih berat) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "brat-vid", 3);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    const text = safeText(req.body?.text, 200);
+    if (!text || text.length < 1) {
+      throw new Error("Teks tidak boleh kosong.");
+    }
+    if (text.length > 200) {
+      throw new Error("Teks maksimal 200 karakter.");
+    }
+
+    // ── LAYER 4: NO CACHE — setiap video unique ──
+
+    // ── LAYER 5: Hit provider ──
+    console.log(`📡 [/api/brat-vid] Fetch: "${text.slice(0, 50)}"`);
+    const response = await http.get(BRAT_VID_API_BASE, {
+      params: { text },
+      responseType: "arraybuffer",
+      timeout: 90_000,
+      maxContentLength: 50 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "video/mp4,video/*,*/*",
+      },
+    });
+
+    // ── LAYER 6: Validate response ──
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const buffer = Buffer.from(response.data);
+
+    if (!buffer.length) throw new Error("Video yang diterima kosong.");
+    if (buffer.length > 50 * 1024 * 1024) throw new Error("Video terlalu besar.");
+
+    // Validate MP4 magic bytes
+    const isMp4 = buffer.length >= 12 &&
+      buffer.subarray(4, 8).toString("ascii") === "ftyp";
+
+    if (!contentType.startsWith("video/") && !isMp4) {
+      throw new Error("API tidak mengembalikan file video yang valid.");
+    }
+
+    // ── LAYER 7: Return ──
+    res.set("Content-Type", contentType.startsWith("video/") ? contentType : "video/mp4");
+    res.set("Cache-Control", "no-store");
+    res.set("Content-Disposition", 'inline; filename="xavrels-brat.mp4"');
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ [/api/brat-vid]", err.message);
+    sendError(res, err);
+  }
+});
+
+
+/* ============================================================
+   /api/gen-dana — Fake Dana Balance Generator
+   ============================================================ */
+const FAKEDANA_API_BASE = "https://api.ikyyxd.my.id/canvas/fakedana";
+
+app.post("/api/gen-dana", requireAuth, async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/gen-dana] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (5/menit) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "gen-dana", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    const amount = parseInt(req.body?.amount, 10);
+    if (!Number.isFinite(amount)) {
+      throw new Error("Amount harus berupa angka.");
+    }
+    if (amount < 1000) {
+      throw new Error("Amount minimal Rp 1.000.");
+    }
+    if (amount > 100_000_000) {
+      throw new Error("Amount maksimal Rp 100.000.000.");
+    }
+
+    // ── LAYER 4: NO CACHE — setiap amount unique ──
+
+    // ── LAYER 5: Hit provider ──
+    console.log(`📡 [/api/gen-dana] Fetch: amount=${amount}`);
+    const response = await http.get(FAKEDANA_API_BASE, {
+      params: { amount },
+      responseType: "arraybuffer",
+      timeout: 45_000,
+      maxContentLength: 15 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/png,image/jpeg,image/*,*/*;q=0.8",
+      },
+    });
+
+    // ── LAYER 6: Validate response ──
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const buffer = Buffer.from(response.data);
+
+    if (!buffer.length) throw new Error("API mengembalikan gambar kosong.");
+    if (buffer.length > 15 * 1024 * 1024) throw new Error("Gambar terlalu besar.");
+
+    // Cek PNG magic bytes (89 50 4E 47) atau JPEG (FF D8 FF)
+    const isPng = buffer.length >= 8 &&
+      buffer[0] === 0x89 && buffer[1] === 0x50 &&
+      buffer[2] === 0x4E && buffer[3] === 0x47;
+    const isJpg = buffer.length >= 3 &&
+      buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+
+    if (!isPng && !isJpg && !contentType.startsWith("image/")) {
+      throw new Error("API tidak mengembalikan file gambar yang valid.");
+    }
+
+    // ── LAYER 7: Return ──
+    res.set("Content-Type", contentType.startsWith("image/") ? contentType : "image/png");
+    res.set("Cache-Control", "no-store");
+    res.set("X-Dana-Amount", String(amount));
+    res.set("Content-Disposition", 'inline; filename="xavrels-dana.png"');
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ [/api/gen-dana]", err.message);
+    sendError(res, err);
+  }
+});
+
 
 /* ============================================================
    FALLBACK
