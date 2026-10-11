@@ -1108,20 +1108,21 @@ const CECAN_COUNTRIES = {
 
 app.get("/api/random-cecan", requireAuth, async (req, res) => {
   try {
-    // Bot detection
+    // ── LAYER 1: Bot detection ──
     if (isLikelyBot(req)) {
-      console.log(`🚫 [/api/random-cecan] Bot detected`);
+      console.log(`🚫 [/api/random-cecan] Bot detected: ${req.headers["user-agent"]}`);
       return res.status(403).json({ ok: false, error: "Akses ditolak." });
     }
 
-    // Rate limit per IP (10 req/menit — tool gacha, boleh lebih longgar)
+    // ── LAYER 2: Rate limit (5/menit per IP — konsisten dgn tools lain) ──
     const identifier = req.ip || "unknown";
-    const limit = checkEndpointLimit(identifier, "random-cecan", 10);
+    const limit = checkEndpointLimit(identifier, "random-cecan", 5);
     if (!limit.ok) {
       res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
       return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
     }
 
+    // ── LAYER 3: Input validation ──
     const country = safeText(req.query?.country, 20).toLowerCase();
     const cfg = CECAN_COUNTRIES[country];
     if (!cfg) {
@@ -1130,7 +1131,10 @@ app.get("/api/random-cecan", requireAuth, async (req, res) => {
 
     console.log(`📡 [/api/random-cecan] Fetch: ${country}`);
 
-    // Request image dari API (binary)
+    // ── LAYER 4: NO CACHE — karena random/gacha ──
+    // Kalau di-cache, user yang klik gacha 2x dapet gambar sama. Skip cache.
+
+    // ── LAYER 5: Hit provider ──
     const response = await http.get(cfg.api, {
       responseType: "arraybuffer",
       timeout: 45_000,
@@ -1141,22 +1145,161 @@ app.get("/api/random-cecan", requireAuth, async (req, res) => {
       },
     });
 
+    // ── LAYER 6: Validate response ──
     const contentType = String(response.headers["content-type"] || "").toLowerCase();
     const buffer = Buffer.from(response.data);
 
     if (!buffer.length) throw new Error("API mengembalikan gambar kosong.");
+    if (buffer.length > 15 * 1024 * 1024) throw new Error("Gambar terlalu besar.");
     if (contentType && !contentType.startsWith("image/")) {
       throw new Error("API tidak mengembalikan file gambar yang valid.");
     }
 
-    // Set header biar browser tau ini image
+    // ── LAYER 7: Return ──
     res.set("Content-Type", contentType || "image/jpeg");
-    res.set("Cache-Control", "no-store"); // Gacha harus fresh tiap request
+    res.set("Cache-Control", "no-store"); // Gacha harus fresh
     res.set("X-Cecan-Country", country);
     res.send(buffer);
 
   } catch (err) {
     console.error("❌ [/api/random-cecan]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/gen-lobby-ff — Fake FF Profile Generator (Solo)
+   ============================================================ */
+const FAKEFF_API_BASE = "https://apii.nexadev.my.id/fakeff";
+
+app.post("/api/gen-lobby-ff", requireAuth, async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/gen-lobby-ff] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (5/menit per IP) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "gen-lobby-ff", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    const nickname = safeText(req.body?.nickname, 30);
+    if (!nickname || nickname.length < 2 || nickname.length > 20) {
+      throw new Error("Nickname harus 2–20 karakter.");
+    }
+
+    // ── LAYER 4: NO CACHE — hasil unik per nickname ──
+
+    // ── LAYER 5: Hit provider ──
+    console.log(`📡 [/api/gen-lobby-ff] Fetch: "${nickname}"`);
+    const response = await http.get(FAKEFF_API_BASE, {
+      params: { usn: nickname },
+      responseType: "arraybuffer",
+      timeout: 45_000,
+      maxContentLength: 15 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/jpeg,image/png,image/*,*/*;q=0.8",
+      },
+    });
+
+    // ── LAYER 6: Validate response ──
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const buffer = Buffer.from(response.data);
+
+    if (!buffer.length) throw new Error("API mengembalikan gambar kosong.");
+    if (buffer.length > 15 * 1024 * 1024) throw new Error("Gambar terlalu besar.");
+    if (contentType && !contentType.startsWith("image/")) {
+      throw new Error("API tidak mengembalikan file gambar yang valid.");
+    }
+
+    // ── LAYER 7: Return ──
+    res.set("Content-Type", contentType || "image/jpeg");
+    res.set("Cache-Control", "no-store");
+    res.set("X-FF-Nickname", encodeURIComponent(nickname));
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ [/api/gen-lobby-ff]", err.message);
+    sendError(res, err);
+  }
+});
+
+
+/* ============================================================
+   /api/gen-duo-ff — Fake FF Duo Profile Generator
+   ============================================================ */
+const FAKEFF_DUO_API_BASE = "https://apii.nexadev.my.id/fakeffduo";
+
+app.post("/api/gen-duo-ff", requireAuth, async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/gen-duo-ff] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (5/menit per IP) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "gen-duo-ff", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    const nick1 = safeText(req.body?.nickname1, 30);
+    const nick2 = safeText(req.body?.nickname2, 30);
+
+    if (!nick1 || nick1.length < 2 || nick1.length > 20) {
+      throw new Error("Nickname 1 harus 2–20 karakter.");
+    }
+    if (!nick2 || nick2.length < 2 || nick2.length > 20) {
+      throw new Error("Nickname 2 harus 2–20 karakter.");
+    }
+    if (nick1.toLowerCase() === nick2.toLowerCase()) {
+      throw new Error("Nickname 1 dan 2 tidak boleh sama.");
+    }
+
+    // ── LAYER 4: NO CACHE ──
+
+    // ── LAYER 5: Hit provider ──
+    console.log(`📡 [/api/gen-duo-ff] Fetch: "${nick1}" & "${nick2}"`);
+    const response = await http.get(FAKEFF_DUO_API_BASE, {
+      params: { nickname1: nick1, nickname2: nick2 },
+      responseType: "arraybuffer",
+      timeout: 45_000,
+      maxContentLength: 15 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/jpeg,image/png,image/*,*/*;q=0.8",
+      },
+    });
+
+    // ── LAYER 6: Validate response ──
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const buffer = Buffer.from(response.data);
+
+    if (!buffer.length) throw new Error("API mengembalikan gambar kosong.");
+    if (buffer.length > 15 * 1024 * 1024) throw new Error("Gambar terlalu besar.");
+    if (contentType && !contentType.startsWith("image/")) {
+      throw new Error("API tidak mengembalikan file gambar yang valid.");
+    }
+
+    // ── LAYER 7: Return ──
+    res.set("Content-Type", contentType || "image/jpeg");
+    res.set("Cache-Control", "no-store");
+    res.set("X-FF-Duo", encodeURIComponent(`${nick1}|${nick2}`));
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ [/api/gen-duo-ff]", err.message);
     sendError(res, err);
   }
 });

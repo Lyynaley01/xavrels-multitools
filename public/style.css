@@ -3642,3 +3642,239 @@ footer>span:nth-child(2){order:3;width:100%}
     animation: none !important;
   }
 }
+/* =========================================================
+   GEN LOBBY FF & GEN DUO FF — Custom Tool UI
+   ========================================================= */
+.fakeff-custom-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fakeff-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: var(--ink);
+  margin: 0;
+  display: block;
+}
+
+.fakeff-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+@media (min-width: 621px) {
+  .fakeff-input-wrap {
+    flex-direction: row;
+    align-items: center;
+  }
+  .fakeff-input-wrap .fakeff-input { flex: 1 1 0; min-width: 0; }
+  .fakeff-input-wrap .fakeff-divider { flex: 0 0 auto; }
+}
+
+.fakeff-input {
+  display: block;
+  width: 100%;
+  padding: 14px 14px;
+  background: #fffdf9;
+  border: 1.5px solid #cfd2d9;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.fakeff-input:focus {
+  border-color: var(--blue);
+  box-shadow: 3px 3px 0 #1769aa28;
+}
+.fakeff-input::placeholder {
+  color: #a0a5b0;
+  font-weight: 500;
+}
+
+.fakeff-divider {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  align-self: center;
+  background: var(--yellow);
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  font-family: "Bangers", cursive;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  flex-shrink: 0;
+}
+@media (max-width: 620px) {
+  .fakeff-divider {
+    width: 100%;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+}
+
+/* ── Tombol Generate ── */
+.fakeff-gen-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #e63946, #ff6b7a);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.fakeff-gen-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+.fakeff-gen-btn:hover:not(:disabled)::before {
+  transform: translateX(100%);
+}
+.fakeff-gen-btn:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.fakeff-gen-btn:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.fakeff-gen-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.fakeff-gen-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.fakeff-gen-text {
+  flex: 1 1 auto;
+  text-align: center;
+}
+.fakeff-gen-arrow {
+  font-size: 16px;
+}
+
+/* ── Hint ── */
+.fakeff-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+}
+
+/* ── Result Card ── */
+.fakeff-result-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px solid #d9dce2;
+  background: #fff;
+  border-radius: 12px;
+  animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: 0 4px 12px rgba(23,27,43,0.06);
+}
+
+.fakeff-result-image-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  max-height: 520px;
+  padding: 12px;
+  background: #f2f4f7;
+}
+
+.fakeff-result-img {
+  display: block;
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  animation: cecanImgEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.fakeff-result-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+.fakeff-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.fakeff-result-info strong {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.fakeff-result-info span {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fakeff-result-actions {
+  display: flex;
+  gap: 8px;
+}
+.fakeff-result-actions .download-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 10px;
+}
+
+@media (min-width: 621px) {
+  .fakeff-result-meta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .fakeff-result-actions .download-btn {
+    flex: 0 0 auto;
+    min-width: 180px;
+  }
+}
+
+/* ── Art untuk card grid ── */
+.art-ff {
+  background-color: #1769aa;
+}
+.art-ffduo {
+  background-color: #ef7a91;
+}

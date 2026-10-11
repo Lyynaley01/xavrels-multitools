@@ -165,6 +165,26 @@ const toolInfo = {
   endpoint: "api/random-cecan", button: "GACHA FOTO",
   supportsUpload: false,
   isCustomTool: "random-cecan"
+},
+"gen-lobby-ff": {
+  title: "GEN LOBBY FF", titleLead: "GEN LOBBY", titleAccent: "FF", issue: "TOOL 08", number: "08",
+  category: "FUN LAB", icon: "🎮",
+  description: "Generate kartu profil Free Fire solo dari nickname.",
+  tip: "Masukkan nickname Free Fire, klik GENERATE, hasilnya kartu profil keren.",
+  label: "Nickname Free Fire", placeholder: "contoh: Xavrels", inputType: "text",
+  endpoint: "api/gen-lobby-ff", button: "GENERATE PROFILE",
+  supportsUpload: false,
+  isCustomTool: "gen-lobby-ff"
+},
+"gen-duo-ff": {
+  title: "GEN DUO FF", titleLead: "GEN DUO", titleAccent: "FF", issue: "TOOL 09", number: "09",
+  category: "FUN LAB", icon: "🎮",
+  description: "Generate kartu profil Free Fire duo dari 2 nickname sekaligus.",
+  tip: "Masukkan 2 nickname, klik GENERATE untuk hasil kartu duo.",
+  label: "Nickname 1 & 2", placeholder: "", inputType: "text",
+  endpoint: "api/gen-duo-ff", button: "GENERATE DUO",
+  supportsUpload: false,
+  isCustomTool: "gen-duo-ff"
 }
 };
 
@@ -1705,6 +1725,8 @@ function renderRandomCecanUI() {
   console.log("[RANDOM-CECAN] UI rendered");
 }
 
+
+
 /* =========================================================
    RANDOM CECAN — Execute Gacha
    ========================================================= */
@@ -1823,6 +1845,265 @@ async function runRandomCecanGacha(btnEl) {
   }
 }
 
+/* =========================================================
+   GEN LOBBY FF & GEN DUO FF — Custom Tool UI
+   ========================================================= */
+function renderFakeFFTool(toolKey) {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const isDuo = toolKey === "gen-duo-ff";
+
+  const wrap = document.createElement("div");
+  wrap.className = "fakeff-custom-ui";
+
+  // ── Label ──
+  const label = document.createElement("label");
+  label.className = "fakeff-label";
+  label.textContent = isDuo ? "Masukkan 2 nickname Free Fire:" : "Masukkan nickname Free Fire:";
+  wrap.append(label);
+
+  // ── Input container ──
+  const inputWrap = document.createElement("div");
+  inputWrap.className = "fakeff-input-wrap";
+
+  if (isDuo) {
+    const inp1 = document.createElement("input");
+    inp1.type = "text";
+    inp1.className = "fakeff-input";
+    inp1.placeholder = "Nickname 1 (contoh: Xavrels)";
+    inp1.maxLength = 20;
+    inp1.id = "fakeffNick1";
+
+    const inp2 = document.createElement("input");
+    inp2.type = "text";
+    inp2.className = "fakeff-input";
+    inp2.placeholder = "Nickname 2 (contoh: Olin)";
+    inp2.maxLength = 20;
+    inp2.id = "fakeffNick2";
+
+    const divider = document.createElement("div");
+    divider.className = "fakeff-divider";
+    divider.innerHTML = `<span>×</span>`;
+
+    inputWrap.append(inp1, divider, inp2);
+  } else {
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.className = "fakeff-input";
+    inp.placeholder = "contoh: Xavrels";
+    inp.maxLength = 20;
+    inp.id = "fakeffNick";
+    inputWrap.append(inp);
+  }
+
+  wrap.append(inputWrap);
+
+  // ── Tombol generate ──
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "fakeff-gen-btn";
+  genBtn.id = "fakeffGenBtn";
+  genBtn.innerHTML = `
+    <span class="fakeff-gen-icon">🎮</span>
+    <span class="fakeff-gen-text">${isDuo ? "GENERATE DUO" : "GENERATE PROFILE"}</span>
+    <span class="fakeff-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runFakeFFGenerate(toolKey, genBtn));
+  wrap.append(genBtn);
+
+  // ── Hint ──
+  const hint = document.createElement("p");
+  hint.className = "fakeff-hint";
+  hint.textContent = isDuo
+    ? "💡 Masukkan 2 nickname berbeda. Hasilnya kartu profil FF duo keren!"
+    : "💡 Masukkan nickname Free Fire kamu. Hasilnya kartu profil FF keren!";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // Auto-focus ke input pertama
+  setTimeout(() => {
+    const firstInput = wrap.querySelector(".fakeff-input");
+    if (firstInput) firstInput.focus({ preventScroll: true });
+  }, 200);
+
+  // Enter key trigger generate
+  wrap.querySelectorAll(".fakeff-input").forEach(inp => {
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        genBtn.click();
+      }
+    });
+  });
+
+  console.log(`[FAKEFF] UI rendered for ${toolKey}`);
+}
+
+/* =========================================================
+   GEN LOBBY FF & GEN DUO FF — Execute Generate
+   ========================================================= */
+async function runFakeFFGenerate(toolKey, btnEl) {
+  const isDuo = toolKey === "gen-duo-ff";
+
+  let nick1 = "", nick2 = "";
+  let payload = {};
+  let label = "";
+
+  if (isDuo) {
+    nick1 = document.getElementById("fakeffNick1")?.value?.trim() || "";
+    nick2 = document.getElementById("fakeffNick2")?.value?.trim() || "";
+
+    if (!nick1 || nick1.length < 2) {
+      showMessage("Nickname 1 minimal 2 karakter.", "error");
+      return;
+    }
+    if (!nick2 || nick2.length < 2) {
+      showMessage("Nickname 2 minimal 2 karakter.", "error");
+      return;
+    }
+    if (nick1.toLowerCase() === nick2.toLowerCase()) {
+      showMessage("Nickname 1 dan 2 tidak boleh sama.", "error");
+      return;
+    }
+
+    payload = { nickname1: nick1, nickname2: nick2 };
+    label = `${nick1} × ${nick2}`;
+  } else {
+    nick1 = document.getElementById("fakeffNick")?.value?.trim() || "";
+
+    if (!nick1 || nick1.length < 2) {
+      showMessage("Nickname minimal 2 karakter.", "error");
+      return;
+    }
+    if (nick1.length > 20) {
+      showMessage("Nickname maksimal 20 karakter.", "error");
+      return;
+    }
+
+    payload = { nickname: nick1 };
+    label = nick1;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="fakeff-gen-icon">⏳</span>
+      <span class="fakeff-gen-text">GENERATING...</span>
+      <span class="fakeff-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang generate kartu profil... 🎮", "loading");
+
+  try {
+    const token = await ensureSession();
+    const url = `/api/${toolKey}`;
+
+    let response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh,
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    // ── Render Result ──
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "fakeff-result-card";
+
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "fakeff-result-image-wrap";
+
+    const img = document.createElement("img");
+    img.className = "fakeff-result-img";
+    img.src = objectUrl;
+    img.alt = `FF Profile ${label}`;
+    img.loading = "lazy";
+
+    imageWrap.append(img);
+
+    const meta = document.createElement("div");
+    meta.className = "fakeff-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "fakeff-result-info";
+    info.innerHTML = isDuo
+      ? `<strong>🎮 FF Duo Profile</strong><span>${nick1} × ${nick2}</span>`
+      : `<strong>🎮 FF Profile</strong><span>${nick1}</span>`;
+
+    const actions = document.createElement("div");
+    actions.className = "fakeff-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = isDuo
+      ? `xavrels-ff-duo-${nick1}-${nick2}-${Date.now()}.jpg`
+      : `xavrels-ff-${nick1}-${Date.now()}.jpg`;
+    download.textContent = "↓ SIMPAN FOTO";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(imageWrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = `Berhasil — ${label}`;
+
+  } catch (err) {
+    console.error(`[FAKEFF] Error:`, err.message);
+    showMessage(err.message || "Gagal generate profile. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="fakeff-gen-icon">🎮</span>
+        <span class="fakeff-gen-text">${isDuo ? "GENERATE DUO" : "GENERATE PROFILE"}</span>
+        <span class="fakeff-gen-arrow">↗</span>
+      `;
+    }
+  }
+}
 
 /* =========================================================
    EXECUTE FIND PRESET DARI CARD VIDEO
@@ -2245,6 +2526,38 @@ function openTool(key, updateHistory = true) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
+  
+  // ═══════════════════════════════════════════════
+// SPECIAL TOOL: GEN LOBBY FF & GEN DUO FF
+// ═══════════════════════════════════════════════
+if (key === "gen-lobby-ff" || key === "gen-duo-ff") {
+  // Setup header info
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+
+  const titleEl = $("#workspaceTitle");
+  titleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  titleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  // Render custom UI
+  renderFakeFFTool(key);
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
 
 
   $("#workspaceIssue").textContent = info.issue;
@@ -2335,7 +2648,7 @@ fpresetInDetailView = false;
 }
 
 function syncRoute() {
-  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset)$/);
+  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset|random-cecan|gen-lobby-ff|gen-duo-ff)$/);
   if (match) openTool(match[1], false);
   else goHome(false);
 }
