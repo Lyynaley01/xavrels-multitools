@@ -3878,3 +3878,158 @@ footer>span:nth-child(2){order:3;width:100%}
 .art-ffduo {
   background-color: #ef7a91;
 }
+/* =========================================================
+   BRAT VID — Custom Tool UI
+   ========================================================= */
+.bratvid-custom-ui { display: flex; flex-direction: column; gap: 12px; }
+.bratvid-label { font-size: 11px; font-weight: 900; letter-spacing: 0.4px; color: var(--ink); margin: 0; display: block; }
+.bratvid-textarea {
+  display: block; width: 100%; min-height: 90px; padding: 14px;
+  background: #fffdf9; border: 1.5px solid #cfd2d9; border-radius: 10px;
+  font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.5;
+  color: var(--ink); outline: none; resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.bratvid-textarea:focus { border-color: var(--blue); box-shadow: 3px 3px 0 #1769aa28; }
+.bratvid-textarea::placeholder { color: #a0a5b0; font-weight: 500; }
+.bratvid-counter { font-size: 10px; color: var(--muted); text-align: right; font-weight: 700; margin-top: -6px; }
+.bratvid-counter span { color: var(--red); font-weight: 900; }
+.bratvid-gen-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 16px 20px; background: linear-gradient(135deg, #1f2937, #374151); color: #fff;
+  border: 2px solid var(--ink); border-radius: 12px; font-family: inherit;
+  font-size: 12px; font-weight: 900; letter-spacing: 1.1px; cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent; position: relative; overflow: hidden;
+}
+.bratvid-gen-btn::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%); transition: transform 0.6s;
+}
+.bratvid-gen-btn:hover:not(:disabled)::before { transform: translateX(100%); }
+.bratvid-gen-btn:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--ink); }
+.bratvid-gen-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
+.bratvid-gen-btn:disabled { cursor: wait; opacity: 0.65; }
+.bratvid-gen-icon { font-size: 20px; line-height: 1; }
+.bratvid-gen-text { flex: 1 1 auto; text-align: center; }
+.bratvid-gen-arrow { font-size: 16px; }
+.bratvid-hint { margin: 0; font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 0.3px; line-height: 1.5; }
+.bratvid-result-card {
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1.5px solid #d9dce2; background: #fff; border-radius: 12px;
+  animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: 0 4px 12px rgba(23,27,43,0.06);
+}
+.bratvid-result-video-wrap {
+  position: relative; display: grid; place-items: center; padding: 12px;
+  background: #f2f4f7; min-height: 200px;
+}
+.bratvid-result-video {
+  display: block; max-width: 100%; max-height: 500px;
+  border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); background: #000;
+}
+.bratvid-result-meta { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-top: 1px solid #e5e7eb; background: #fff; }
+.bratvid-result-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bratvid-result-info strong { font-size: 12px; font-weight: 900; color: var(--ink); }
+.bratvid-result-info span {
+  font-size: 10px; color: var(--muted); font-weight: 600; line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
+}
+.bratvid-result-actions { display: flex; gap: 8px; }
+.bratvid-result-actions .download-btn { flex: 1; padding: 12px; font-size: 10px; }
+@media (min-width: 621px) {
+  .bratvid-result-meta { flex-direction: row; align-items: center; justify-content: space-between; }
+  .bratvid-result-actions .download-btn { flex: 0 0 auto; min-width: 180px; }
+}
+.art-bratvid { background-color: #252b4b; }
+.art-bratvid > span { color: #fff; -webkit-text-stroke: 1px var(--ink); font-size: 44px; }
+
+/* =========================================================
+   GEN DANA — Custom Tool UI
+   ========================================================= */
+.gendana-custom-ui { display: flex; flex-direction: column; gap: 12px; }
+.gendana-label { font-size: 11px; font-weight: 900; letter-spacing: 0.4px; color: var(--ink); margin: 0; }
+.gendana-input-wrap {
+  display: flex; align-items: stretch; border: 1.5px solid #cfd2d9;
+  border-radius: 10px; background: #fffdf9; overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.gendana-input-wrap:focus-within { border-color: var(--blue); box-shadow: 3px 3px 0 #1769aa28; }
+.gendana-prefix {
+  display: grid; place-items: center; padding: 0 14px;
+  background: #e5f2ff; color: var(--blue); font-size: 13px; font-weight: 900;
+  letter-spacing: 0.5px; border-right: 1.5px solid #cfd2d9; flex-shrink: 0;
+}
+.gendana-input {
+  flex: 1 1 auto; min-width: 0; padding: 14px 14px; background: transparent;
+  border: 0; outline: 0; font-family: inherit; font-size: 14px; font-weight: 700;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.gendana-input::placeholder { color: #a0a5b0; font-weight: 500; }
+.gendana-input::-webkit-outer-spin-button,
+.gendana-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.gendana-input[type=number] { -moz-appearance: textfield; }
+.gendana-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.gendana-preset-btn {
+  flex: 1 1 auto; min-width: 60px; padding: 8px 10px; background: #fff;
+  border: 1.5px solid #cfd2d9; border-radius: 999px; font-family: inherit;
+  font-size: 10px; font-weight: 900; letter-spacing: 0.4px; color: var(--ink);
+  cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.gendana-preset-btn:hover { border-color: var(--ink); transform: translateY(-1px); box-shadow: 2px 2px 0 var(--ink); }
+.gendana-preset-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 2px 2px 0 var(--ink); }
+.gendana-display { text-align: center; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.3px; }
+.gendana-display strong { color: var(--red); font-size: 14px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.gendana-gen-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 16px 20px; background: linear-gradient(135deg, #0066cc, #0088dd); color: #fff;
+  border: 2px solid var(--ink); border-radius: 12px; font-family: inherit;
+  font-size: 12px; font-weight: 900; letter-spacing: 1.1px; cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent; position: relative; overflow: hidden;
+}
+.gendana-gen-btn::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: translateX(-100%); transition: transform 0.6s;
+}
+.gendana-gen-btn:hover:not(:disabled)::before { transform: translateX(100%); }
+.gendana-gen-btn:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--ink); }
+.gendana-gen-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
+.gendana-gen-btn:disabled { cursor: wait; opacity: 0.65; }
+.gendana-gen-icon { font-size: 20px; line-height: 1; }
+.gendana-gen-text { flex: 1 1 auto; text-align: center; }
+.gendana-gen-arrow { font-size: 16px; }
+.gendana-hint { margin: 0; font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 0.3px; line-height: 1.5; }
+.gendana-result-card {
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1.5px solid #d9dce2; background: #fff; border-radius: 12px;
+  animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: 0 4px 12px rgba(23,27,43,0.06);
+}
+.gendana-result-image-wrap {
+  position: relative; display: grid; place-items: center; padding: 12px;
+  background: #f2f4f7; min-height: 200px;
+}
+.gendana-result-img {
+  display: block; max-width: 100%; max-height: 500px;
+  object-fit: contain; border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  animation: cecanImgEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.gendana-result-meta { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-top: 1px solid #e5e7eb; background: #fff; }
+.gendana-result-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gendana-result-info strong { font-size: 12px; font-weight: 900; color: var(--ink); }
+.gendana-result-info span { font-size: 11px; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.gendana-result-actions { display: flex; gap: 8px; }
+.gendana-result-actions .download-btn { flex: 1; padding: 12px; font-size: 10px; }
+@media (min-width: 621px) {
+  .gendana-result-meta { flex-direction: row; align-items: center; justify-content: space-between; }
+  .gendana-result-actions .download-btn { flex: 0 0 auto; min-width: 180px; }
+}
+.art-dana { background-color: #0066cc; }
+.art-dana > span { color: #fff; -webkit-text-stroke: 1.5px var(--ink); }
