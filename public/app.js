@@ -548,13 +548,14 @@ function renderMusic(data) {
   const card = document.createElement("article");
   card.className = "music-result-card";
 
+  /* ===== HERO — cover Spotify HD ===== */
   const hero = document.createElement("div");
   hero.className = "music-hero";
 
-  if (item.thumbnail) {
+  if (item.cover) {
     const bg = document.createElement("div");
     bg.className = "music-hero-bg";
-    bg.style.backgroundImage = `url("${item.thumbnail}")`;
+    bg.style.backgroundImage = `url("${item.cover}")`;
     hero.append(bg);
   }
 
@@ -563,9 +564,9 @@ function renderMusic(data) {
 
   const cover = document.createElement("div");
   cover.className = "music-hero-cover";
-  if (item.thumbnail) {
+  if (item.cover) {
     const img = document.createElement("img");
-    img.src = item.thumbnail;
+    img.src = item.cover;
     img.alt = "Cover lagu";
     img.loading = "lazy";
     cover.append(img);
@@ -596,12 +597,17 @@ function renderMusic(data) {
     dur.innerHTML = `◷ <b>${item.duration}</b>`;
     metaRow.append(dur);
   }
-
-  if (item.source) {
-    const src = document.createElement("span");
-    src.className = "music-meta-chip music-meta-src";
-    src.textContent = "▶ YouTube";
-    metaRow.append(src);
+  if (item.year) {
+    const yr = document.createElement("span");
+    yr.className = "music-meta-chip";
+    yr.innerHTML = `📅 <b>${item.year}</b>`;
+    metaRow.append(yr);
+  }
+  if (item.album) {
+    const alb = document.createElement("span");
+    alb.className = "music-meta-chip";
+    alb.textContent = `💿 ${item.album}`;
+    metaRow.append(alb);
   }
 
   heroInfo.append(metaRow);
@@ -609,21 +615,23 @@ function renderMusic(data) {
   hero.append(heroOverlay);
   card.append(hero);
 
-  /* ===== YouTube Player ===== */
-  if (item.videoId) {
+  /* ===== HTML5 Audio Player ===== */
+  if (item.audio) {
     const playerWrap = document.createElement("div");
     playerWrap.className = "music-player";
 
-    const iframe = document.createElement("iframe");
-    iframe.className = "music-iframe";
-    iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(item.videoId)}?rel=0&modestbranding=1`;
-    iframe.title = item.title || "YouTube player";
-    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-    iframe.allowFullscreen = true;
-    iframe.loading = "lazy";
-    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    audio.src = item.audio;
+    audio.controlsList = "nodownload";
 
-    playerWrap.append(iframe);
+    // Fallback kalau audio gagal load
+    audio.addEventListener("error", () => {
+      playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio tidak dapat diputar. Coba refresh halaman.</div>`;
+    });
+
+    playerWrap.append(audio);
     card.append(playerWrap);
   }
 
@@ -631,14 +639,14 @@ function renderMusic(data) {
   const actions = document.createElement("div");
   actions.className = "music-actions";
 
-  if (item.url) {
-    const open = document.createElement("a");
-    open.className = "download-btn";
-    open.href = item.url;
-    open.target = "_blank";
-    open.rel = "noopener noreferrer";
-    open.textContent = "▶  BUKA DI YOUTUBE";
-    actions.append(open);
+  if (item.spotifyUrl) {
+    const spotify = document.createElement("a");
+    spotify.className = "download-btn music-spotify-btn";
+    spotify.href = item.spotifyUrl;
+    spotify.target = "_blank";
+    spotify.rel = "noopener noreferrer";
+    spotify.textContent = "🎧  BUKA DI SPOTIFY";
+    actions.append(spotify);
   }
 
   if (actions.children.length) card.append(actions);
