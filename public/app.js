@@ -2821,17 +2821,6 @@ $("#workspaceDecoNumber").textContent = info.number;
 
 const titleEl = $("#workspaceTitle");
 titleEl.replaceChildren();
-  const lead = document.createElement("span"); lead.textContent = info.titleLead;
-  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
-  titleEl.append(lead, document.createTextNode(" "), accent);
-
-  $("#workspaceIssue").textContent = info.issue;
-$("#workspaceIcon").textContent = info.icon;
-$("#workspaceCategory").textContent = info.category;
-$("#workspaceDecoNumber").textContent = info.number;
-
-const titleEl = $("#workspaceTitle");
-titleEl.replaceChildren();
 const lead = document.createElement("span"); lead.textContent = info.titleLead;
 const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
 titleEl.append(lead, document.createTextNode(" "), accent);
@@ -4305,16 +4294,6 @@ async function runFaceswapGenerate(btnEl) {
   }
 }
 
-// Jalankan setelah DOM ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", autoCountAndNumberTools);
-} else {
-  autoCountAndNumberTools();
-}
-
-/* =========================================================
-   Cache form HTML asli buat restore
-   ========================================================= */
 /* =========================================================
    Cache form HTML asli SEBELUM apapun dijalankan
    ========================================================= */
