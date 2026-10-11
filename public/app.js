@@ -1317,7 +1317,8 @@ function renderFpresetSearch(data) {
     keyword: input.value.trim() || "",
     videos,
     shownCount: 0,
-    scrollPos: window.scrollY
+    scrollPos: window.scrollY,
+    sort: "default" // default | views | likes
   };
   fpresetInDetailView = false;
 
@@ -1334,9 +1335,43 @@ function renderFpresetSearch(data) {
     return;
   }
 
+  /* ===== FILTER / SORT BAR ===== */
+  const filterBar = document.createElement("div");
+  filterBar.className = "fpreset-filter-bar";
+
+  const filterLabel = document.createElement("span");
+  filterLabel.className = "fpreset-filter-label";
+  filterLabel.innerHTML = `⚡ URUTKAN:`;
+  filterBar.append(filterLabel);
+
+  const filterOptions = [
+    { key: "default", label: "🆕 TERBARU", title: "Urutan asli dari TikTok" },
+    { key: "views",   label: "👁 VIEWS",  title: "Paling banyak views" },
+    { key: "likes",   label: "❤️ LIKES",  title: "Paling banyak likes" }
+  ];
+
+  const filterBtns = {};
+  filterOptions.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fpreset-filter-btn";
+    btn.dataset.sort = opt.key;
+    btn.title = opt.title;
+    btn.textContent = opt.label;
+    if (opt.key === "default") btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      if (fpresetSearchState?.sort === opt.key) return;
+      applyFilter(opt.key);
+    });
+    filterBar.append(btn);
+    filterBtns[opt.key] = btn;
+  });
+
+  resultArea.append(filterBar);
+
   // ===== PAGINATION CONFIG =====
   const INITIAL_COUNT = 6;
-  const LOAD_STEP = 6; // tiap klik load 6 lagi
+  const LOAD_STEP = 6;
   let shownCount = 0;
 
   // Grid container
@@ -1344,10 +1379,45 @@ function renderFpresetSearch(data) {
   grid.className = "fpreset-search-grid";
   resultArea.append(grid);
 
-  // Wrapper buat tombol "load more" (biar gampang di-remove)
+  // Wrapper buat tombol "load more"
   const loadMoreWrap = document.createElement("div");
   loadMoreWrap.className = "fpreset-load-more-wrap";
   resultArea.append(loadMoreWrap);
+
+  // ===== Function: sort videos =====
+  function sortVideos(list, mode) {
+    const arr = [...list];
+    if (mode === "views") {
+      arr.sort((a, b) => (Number(b.stats?.views) || 0) - (Number(a.stats?.views) || 0));
+    } else if (mode === "likes") {
+      arr.sort((a, b) => (Number(b.stats?.likes) || 0) - (Number(a.stats?.likes) || 0));
+    }
+    // "default" → biarin urutan asli
+    return arr;
+  }
+
+  // ===== Function: apply filter (sort + reset grid) =====
+  function applyFilter(mode) {
+    if (!fpresetSearchState) return;
+    fpresetSearchState.sort = mode;
+
+    // Update button active state
+    Object.entries(filterBtns).forEach(([key, btn]) => {
+      btn.classList.toggle("active", key === mode);
+    });
+
+    // Reset grid & pagination
+    grid.replaceChildren();
+    shownCount = 0;
+    if (fpresetSearchState) fpresetSearchState.shownCount = 0;
+
+    // Re-render first batch
+    renderBatch(INITIAL_COUNT);
+
+    // Scroll ke atas grid dikit biar user lihat perubahan
+    const gridTop = grid.getBoundingClientRect().top + window.scrollY - 100;
+    window.scrollTo({ top: Math.max(0, gridTop), behavior: "smooth" });
+  }
 
   // Counter kecil di bawah grid
   const counterEl = document.createElement("div");
@@ -1420,27 +1490,29 @@ function renderFpresetSearch(data) {
     return card;
   }
 
-  // ===== Function: render batch =====
+  // ===== Function: render batch (pakai sorted list) =====
   function renderBatch(count) {
+    const sortedList = sortVideos(videos, fpresetSearchState?.sort || "default");
+
     const start = shownCount;
-    const end = Math.min(start + count, videos.length);
+    const end = Math.min(start + count, sortedList.length);
 
     for (let i = start; i < end; i++) {
-      grid.append(buildCard(videos[i], i));
+      grid.append(buildCard(sortedList[i], i));
     }
     shownCount = end;
-if (fpresetSearchState) fpresetSearchState.shownCount = shownCount;
+    if (fpresetSearchState) fpresetSearchState.shownCount = shownCount;
 
     // Update counter
-    counterEl.textContent = `Menampilkan ${shownCount} dari ${videos.length} video`;
+    counterEl.textContent = `Menampilkan ${shownCount} dari ${sortedList.length} video`;
 
     // Kalau udah semua, sembunyikan tombol
-    if (shownCount >= videos.length) {
+    if (shownCount >= sortedList.length) {
       loadMoreBtn.hidden = true;
-      counterEl.textContent = `Semua ${videos.length} video sudah ditampilkan`;
+      counterEl.textContent = `Semua ${sortedList.length} video sudah ditampilkan`;
     } else {
-      // Update label tombol: sisa berapa
-      const remaining = videos.length - shownCount;
+      loadMoreBtn.hidden = false;
+      const remaining = sortedList.length - shownCount;
       const nextBatch = Math.min(LOAD_STEP, remaining);
       loadMoreBtn.querySelector("span").textContent =
         `LIHAT ${nextBatch} VIDEO LAGI`;
@@ -1455,7 +1527,6 @@ if (fpresetSearchState) fpresetSearchState.shownCount = shownCount;
     loadMoreBtn.disabled = true;
     loadMoreBtn.innerHTML = `⏳ <span>MEMUAT…</span>`;
 
-    // Pakai setTimeout biar ada efek loading dikit (biar gak kerasa instan)
     setTimeout(() => {
       renderBatch(LOAD_STEP);
       loadMoreBtn.disabled = false;

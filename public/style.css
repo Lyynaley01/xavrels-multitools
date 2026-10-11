@@ -2373,3 +2373,77 @@ footer>span:nth-child(2){order:3;width:100%}
   .fpreset-detail-loading strong { font-size: 12px; }
   .fpreset-detail-loading span { font-size: 10px; }
 }
+/* =========================================================
+   FPRESET FILTER / SORT BAR
+   ========================================================= */
+.fpreset-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: #f7f8fb;
+  border: 1.5px solid #e0e3e9;
+  border-radius: 10px;
+}
+
+.fpreset-filter-label {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.fpreset-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 12px;
+  background: #fff;
+  color: var(--ink);
+  border: 1.5px solid #cfd2d9;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.12s, box-shadow 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fpreset-filter-btn:hover {
+  background: #f0f2f6;
+  border-color: var(--ink);
+  transform: translateY(-1px);
+}
+.fpreset-filter-btn:active {
+  transform: translateY(0);
+}
+.fpreset-filter-btn.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--red);
+}
+
+/* Responsive */
+@media (max-width: 620px) {
+  .fpreset-filter-bar {
+    gap: 5px;
+    padding: 7px 8px;
+  }
+  .fpreset-filter-label {
+    width: 100%;
+    margin: 0 0 2px 0;
+    font-size: 8px;
+  }
+  .fpreset-filter-btn {
+    flex: 1 1 calc(33.333% - 4px);
+    padding: 8px 6px;
+    font-size: 9px;
+    letter-spacing: 0.4px;
+  }
+}
