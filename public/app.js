@@ -205,7 +205,27 @@ const toolInfo = {
     endpoint: "api/gen-dana", button: "GENERATE GAMBAR",
     supportsUpload: false,
     isCustomTool: "gen-dana"
-  }
+  },
+  "gen-ovo": {
+  title: "GEN OVO", titleLead: "GEN", titleAccent: "OVO", issue: "TOOL 13", number: "13",
+  category: "FUN LAB", icon: "💙",
+  description: "Generate gambar saldo OVO palsu sesuai nominal yang kamu masukkan.",
+  tip: "Masukkan nominal saldo, klik GENERATE, gambar OVO siap di-download.",
+  label: "Nominal saldo (Rp)", placeholder: "contoh: 1000000", inputType: "text",
+  endpoint: "api/gen-ovo", button: "GENERATE GAMBAR",
+  supportsUpload: false,
+  isCustomTool: "gen-ovo"
+},
+faceswap: {
+  title: "FACESWAP", titleLead: "FACE", titleAccent: "SWAP", issue: "TOOL 14", number: "14",
+  category: "AI LAB", icon: "🔄",
+  description: "Tukar wajah antara 2 foto. Bisa via link atau upload file langsung.",
+  tip: "Gunakan foto dengan wajah jelas & pencahayaan bagus agar hasil maksimal.",
+  label: "Foto wajah (HTTPS)", placeholder: "https://example.com/face.jpg", inputType: "url",
+  endpoint: "api/faceswap", button: "SWAP FACE",
+  supportsUpload: true,
+  supportsDualInput: true
+}
 };
 
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
@@ -2607,6 +2627,70 @@ function openTool(key, updateHistory = true) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
+  
+  
+  // ═══════════════════════════════════════════════
+// SPECIAL TOOL: GEN OVO — Custom UI
+// ═══════════════════════════════════════════════
+if (key === "gen-ovo") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+
+  const ovoTitleEl = $("#workspaceTitle");
+  ovoTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  ovoTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  renderGenOvoTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
+
+// ═══════════════════════════════════════════════
+// SPECIAL TOOL: FACESWAP — Custom UI (dual input)
+// ═══════════════════════════════════════════════
+if (key === "faceswap") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+
+  const fsTitleEl = $("#workspaceTitle");
+  fsTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  fsTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  renderFaceswapTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
+
 
   // ═══════════════════════════════════════════════
   // SPECIAL TOOL: GEN LOBBY FF & GEN DUO FF
@@ -3456,6 +3540,649 @@ function autoCountAndNumberTools() {
   });
 
   console.log("[XAVRELS] Auto-numbering selesai. Order:", orderedKeys.join(", "));
+}
+
+/* =========================================================
+   GEN OVO — Custom Tool UI (Client-side Canvas)
+   ========================================================= */
+const OVO_BG_URL = "https://raw.githubusercontent.com/Ditzzx-vibecoder/Assets/main/Image/file_0000000078bc71fa87da5cf26dc6c008.jpeg";
+const OVO_W = 841;
+const OVO_H = 1870;
+let ovoBgImg = null;
+let ovoBgLoading = false;
+
+function formatRupiahOvo(n) {
+  const d = String(n).replace(/\D/g, "") || "0";
+  return d.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function loadOvoBg() {
+  return new Promise((resolve, reject) => {
+    if (ovoBgImg) return resolve(ovoBgImg);
+    if (ovoBgLoading) {
+      // Kalau sedang loading, tunggu sebentar & retry
+      const interval = setInterval(() => {
+        if (ovoBgImg) { clearInterval(interval); resolve(ovoBgImg); }
+      }, 100);
+      setTimeout(() => { clearInterval(interval); reject(new Error("Timeout load BG")); }, 15000);
+      return;
+    }
+    ovoBgLoading = true;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => { ovoBgImg = img; ovoBgLoading = false; resolve(img); };
+    img.onerror = () => { ovoBgLoading = false; reject(new Error("Gagal load background OVO")); };
+    img.src = OVO_BG_URL;
+  });
+}
+
+function renderGenOvoTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const wrap = document.createElement("div");
+  wrap.className = "genovo-custom-ui";
+
+  const label = document.createElement("label");
+  label.className = "genovo-label";
+  label.textContent = "Masukkan nominal saldo OVO:";
+  wrap.append(label);
+
+  const inputWrap = document.createElement("div");
+  inputWrap.className = "genovo-input-wrap";
+
+  const prefix = document.createElement("span");
+  prefix.className = "genovo-prefix";
+  prefix.textContent = "Rp";
+
+  const inp = document.createElement("input");
+  inp.type = "number";
+  inp.className = "genovo-input";
+  inp.placeholder = "contoh: 1000000";
+  inp.min = "1000";
+  inp.max = "999999999";
+  inp.step = "1000";
+  inp.id = "genovoAmount";
+
+  inputWrap.append(prefix, inp);
+  wrap.append(inputWrap);
+
+  const presetsWrap = document.createElement("div");
+  presetsWrap.className = "genovo-presets";
+
+  const presets = [10000, 50000, 100000, 500000, 1000000, 5000000];
+  presets.forEach(val => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "genovo-preset-btn";
+    btn.textContent = formatRupiahShort(val);
+    btn.dataset.value = String(val);
+    btn.addEventListener("click", () => {
+      inp.value = String(val);
+      presetsWrap.querySelectorAll(".genovo-preset-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateDisplay();
+    });
+    presetsWrap.append(btn);
+  });
+  wrap.append(presetsWrap);
+
+  const display = document.createElement("div");
+  display.className = "genovo-display";
+  display.innerHTML = `Saldo: <strong id="genovoDisplay">Rp 0</strong>`;
+  wrap.append(display);
+
+  const updateDisplay = () => {
+    const val = parseInt(inp.value, 10) || 0;
+    const el = document.getElementById("genovoDisplay");
+    if (el) el.textContent = "Rp " + formatRupiahOvo(val);
+  };
+  inp.addEventListener("input", updateDisplay);
+
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "genovo-gen-btn";
+  genBtn.id = "genovoGenBtn";
+  genBtn.innerHTML = `
+    <span class="genovo-gen-icon">💙</span>
+    <span class="genovo-gen-text">GENERATE GAMBAR</span>
+    <span class="genovo-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runGenOvoGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "genovo-hint";
+  hint.textContent = "💡 Nominal: Rp 1.000 – Rp 999.999.999. Hasil format PNG siap di-download.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  setTimeout(() => inp.focus({ preventScroll: true }), 200);
+
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      genBtn.click();
+    }
+  });
+}
+
+async function runGenOvoGenerate(btnEl) {
+  const amountStr = document.getElementById("genovoAmount")?.value?.trim() || "";
+  const amount = parseInt(amountStr, 10);
+
+  if (!Number.isFinite(amount)) {
+    showMessage("Masukkan nominal yang valid (angka).", "error");
+    return;
+  }
+  if (amount < 1000) {
+    showMessage("Nominal minimal Rp 1.000.", "error");
+    return;
+  }
+  if (amount > 999999999) {
+    showMessage("Nominal maksimal Rp 999.999.999.", "error");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="genovo-gen-icon">⏳</span>
+      <span class="genovo-gen-text">GENERATING...</span>
+      <span class="genovo-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang generate gambar OVO... 💙", "loading");
+
+  try {
+    // Load BG (cache di memory)
+    const bgImg = await loadOvoBg();
+
+    // Render ke canvas
+    const canvas = document.createElement("canvas");
+    canvas.width = OVO_W;
+    canvas.height = OVO_H;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, OVO_W, OVO_H);
+    ctx.drawImage(bgImg, 0, 0, OVO_W, OVO_H);
+
+    const amountText = formatRupiahOvo(amount);
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+
+    ctx.font = '800 20px "DM Sans", "Plus Jakarta Sans", sans-serif';
+    ctx.fillText("Rp", 61, 368);
+
+    ctx.font = '800 28px "DM Sans", "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(amountText, 94, 371);
+
+    // Convert ke blob
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 0.95));
+    if (!blob) throw new Error("Gagal convert canvas ke gambar.");
+
+    const objectUrl = URL.createObjectURL(blob);
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    // Render result
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "genovo-result-card";
+
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "genovo-result-image-wrap";
+
+    const img = document.createElement("img");
+    img.className = "genovo-result-img";
+    img.src = objectUrl;
+    img.alt = `OVO Rp ${formatRupiahOvo(amount)}`;
+    img.loading = "lazy";
+
+    imageWrap.append(img);
+
+    const meta = document.createElement("div");
+    meta.className = "genovo-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "genovo-result-info";
+    info.innerHTML = `
+      <strong>💙 OVO Saldo</strong>
+      <span>Rp ${formatRupiahOvo(amount)}</span>
+    `;
+
+    const actions = document.createElement("div");
+    actions.className = "genovo-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-ovo-${amount}-${Date.now()}.png`;
+    download.textContent = "↓ SIMPAN GAMBAR";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(imageWrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = `Berhasil — Rp ${formatRupiahOvo(amount)}`;
+
+  } catch (err) {
+    console.error("[GEN-OVO] Error:", err.message);
+    showMessage(err.message || "Gagal generate gambar. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="genovo-gen-icon">💙</span>
+        <span class="genovo-gen-text">GENERATE GAMBAR</span>
+        <span class="genovo-gen-arrow">↗</span>
+      `;
+    }
+  }
+}
+
+/* =========================================================
+   FACESWAP — Custom Tool UI (Dual Input: URL / Upload)
+   ========================================================= */
+let faceswapMode = "url"; // "url" | "upload"
+let faceswapSourceFile = null;
+let faceswapTargetFile = null;
+let faceswapSourcePreviewUrl = null;
+let faceswapTargetPreviewUrl = null;
+
+function renderFaceswapTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  // Reset state
+  faceswapMode = "url";
+  faceswapSourceFile = null;
+  faceswapTargetFile = null;
+  if (faceswapSourcePreviewUrl) { URL.revokeObjectURL(faceswapSourcePreviewUrl); faceswapSourcePreviewUrl = null; }
+  if (faceswapTargetPreviewUrl) { URL.revokeObjectURL(faceswapTargetPreviewUrl); faceswapTargetPreviewUrl = null; }
+
+  const wrap = document.createElement("div");
+  wrap.className = "faceswap-custom-ui";
+
+  // ── Tab switcher ──
+  const tabs = document.createElement("div");
+  tabs.className = "faceswap-tabs";
+
+  const tabUrl = document.createElement("button");
+  tabUrl.type = "button";
+  tabUrl.className = "faceswap-tab active";
+  tabUrl.dataset.mode = "url";
+  tabUrl.innerHTML = `<span>🔗</span> PAKAI LINK`;
+
+  const tabUpload = document.createElement("button");
+  tabUpload.type = "button";
+  tabUpload.className = "faceswap-tab";
+  tabUpload.dataset.mode = "upload";
+  tabUpload.innerHTML = `<span>📁</span> UPLOAD FILE`;
+
+  tabs.append(tabUrl, tabUpload);
+  wrap.append(tabs);
+
+  // ── Mode URL ──
+  const urlMode = document.createElement("div");
+  urlMode.className = "faceswap-mode";
+  urlMode.id = "faceswapUrlMode";
+
+  // Field Source
+  const srcGroup = document.createElement("div");
+  srcGroup.className = "faceswap-field-group";
+  srcGroup.innerHTML = `<label>Wajah Pengganti</label>`;
+  const srcInput = document.createElement("input");
+  srcInput.type = "url";
+  srcInput.className = "faceswap-input";
+  srcInput.id = "faceswapSourceUrl";
+  srcInput.placeholder = "https://example.com/face.jpg";
+  srcInput.autocomplete = "url";
+  srcGroup.append(srcInput);
+
+  // Field Target
+  const tgtGroup = document.createElement("div");
+  tgtGroup.className = "faceswap-field-group";
+  tgtGroup.innerHTML = `<label>Wajah yang Mau Diganti</label>`;
+  const tgtInput = document.createElement("input");
+  tgtInput.type = "url";
+  tgtInput.className = "faceswap-input";
+  tgtInput.id = "faceswapTargetUrl";
+  tgtInput.placeholder = "https://example.com/target.jpg";
+  tgtInput.autocomplete = "url";
+  tgtGroup.append(tgtInput);
+
+  urlMode.append(srcGroup, tgtGroup);
+  wrap.append(urlMode);
+
+  // ── Mode Upload ──
+  const uploadMode = document.createElement("div");
+  uploadMode.className = "faceswap-mode";
+  uploadMode.id = "faceswapUploadMode";
+  uploadMode.hidden = true;
+
+  const srcDrop = createFaceswapDropzone("source", "Wajah Pengganti");
+  const tgtDrop = createFaceswapDropzone("target", "Wajah yang Mau Diganti");
+  uploadMode.append(srcDrop, tgtDrop);
+  wrap.append(uploadMode);
+
+  // ── Tombol generate ──
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "faceswap-gen-btn";
+  genBtn.id = "faceswapGenBtn";
+  genBtn.innerHTML = `
+    <span class="faceswap-gen-icon">🔄</span>
+    <span class="faceswap-gen-text">SWAP FACE</span>
+    <span class="faceswap-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runFaceswapGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "faceswap-hint";
+  hint.textContent = "💡 Gunakan foto wajah yang jelas. Proses 20-60 detik tergantung server.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // ── Event: Tab switcher ──
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".faceswap-tab");
+    if (!btn) return;
+    const mode = btn.dataset.mode;
+    if (mode === faceswapMode) return;
+    faceswapMode = mode;
+
+    tabs.querySelectorAll(".faceswap-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.mode === mode);
+    });
+    urlMode.hidden = mode !== "url";
+    uploadMode.hidden = mode !== "upload";
+  });
+}
+
+function createFaceswapDropzone(type, labelText) {
+  const group = document.createElement("div");
+  group.className = "faceswap-field-group";
+
+  const label = document.createElement("label");
+  label.textContent = labelText;
+  group.append(label);
+
+  const drop = document.createElement("div");
+  drop.className = "faceswap-dropzone";
+  drop.dataset.type = type;
+  drop.tabIndex = 0;
+
+  const fileInp = document.createElement("input");
+  fileInp.type = "file";
+  fileInp.accept = "image/png,image/jpeg,image/jpg,image/webp";
+  fileInp.hidden = true;
+  drop.append(fileInp);
+
+  const inner = document.createElement("div");
+  inner.className = "faceswap-dropzone-inner";
+  inner.innerHTML = `
+    <div class="faceswap-dropzone-icon">⬆</div>
+    <strong>KLIK / DROP</strong>
+    <span>PNG · JPG · max 10 MB</span>
+  `;
+
+  const preview = document.createElement("div");
+  preview.className = "faceswap-dropzone-preview";
+  preview.hidden = true;
+
+  const prevImg = document.createElement("img");
+  prevImg.alt = "Preview";
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "faceswap-clear-file";
+  clearBtn.textContent = "✕";
+  clearBtn.setAttribute("aria-label", "Hapus file");
+  preview.append(prevImg, clearBtn);
+
+  drop.append(inner, preview);
+  group.append(drop);
+
+  // ── Handlers ──
+  function setFile(file) {
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      showMessage("Format file harus PNG, JPG, atau WEBP.", "error");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showMessage("File terlalu besar. Maksimal 10 MB.", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      prevImg.src = ev.target.result;
+      inner.hidden = true;
+      preview.hidden = false;
+    };
+    reader.readAsDataURL(file);
+
+    if (type === "source") {
+      faceswapSourceFile = file;
+    } else {
+      faceswapTargetFile = file;
+    }
+  }
+
+  function clearFile() {
+    fileInp.value = "";
+    prevImg.src = "";
+    inner.hidden = false;
+    preview.hidden = true;
+    if (type === "source") faceswapSourceFile = null;
+    else faceswapTargetFile = null;
+  }
+
+  drop.addEventListener("click", (e) => {
+    if (e.target.closest(".faceswap-clear-file")) return;
+    fileInp.click();
+  });
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInp.click(); }
+  });
+  ["dragenter", "dragover"].forEach(evt => {
+    drop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.add("dragover"); });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    drop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("dragover"); });
+  });
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer?.files?.[0];
+    if (f) setFile(f);
+  });
+  fileInp.addEventListener("change", (e) => {
+    const f = e.target.files?.[0];
+    if (f) setFile(f);
+  });
+  clearBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearFile();
+  });
+
+  return group;
+}
+
+async function runFaceswapGenerate(btnEl) {
+  let sourcePayload = null; // { type: "url", value } atau { type: "file", value: File }
+  let targetPayload = null;
+
+  if (faceswapMode === "url") {
+    const srcUrl = document.getElementById("faceswapSourceUrl")?.value?.trim() || "";
+    const tgtUrl = document.getElementById("faceswapTargetUrl")?.value?.trim() || "";
+
+    if (!srcUrl) { showMessage("Isi URL wajah pengganti.", "error"); return; }
+    if (!tgtUrl) { showMessage("Isi URL wajah yang mau diganti.", "error"); return; }
+
+    sourcePayload = { type: "url", value: srcUrl };
+    targetPayload = { type: "url", value: tgtUrl };
+  } else {
+    if (!faceswapSourceFile) { showMessage("Upload file wajah pengganti.", "error"); return; }
+    if (!faceswapTargetFile) { showMessage("Upload file wajah yang mau diganti.", "error"); return; }
+
+    sourcePayload = { type: "file", value: faceswapSourceFile };
+    targetPayload = { type: "file", value: faceswapTargetFile };
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="faceswap-gen-icon">⏳</span>
+      <span class="faceswap-gen-text">PROCESSING...</span>
+      <span class="faceswap-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang swap wajah... 🔄 (20-60 detik)", "loading");
+
+  try {
+    const token = await ensureSession();
+
+    // Build FormData kalau ada file, JSON kalau url-only
+    const hasFile = sourcePayload.type === "file" || targetPayload.type === "file";
+
+    let fetchOpts;
+    if (hasFile) {
+      const fd = new FormData();
+      if (sourcePayload.type === "file") {
+        fd.append("sourceFile", sourcePayload.value, sourcePayload.value.name);
+      } else {
+        fd.append("sourceUrl", sourcePayload.value);
+      }
+      if (targetPayload.type === "file") {
+        fd.append("targetFile", targetPayload.value, targetPayload.value.name);
+      } else {
+        fd.append("targetUrl", targetPayload.value);
+      }
+      fetchOpts = {
+        method: "POST",
+        headers: { "X-Session-Token": token },
+        body: fd
+      };
+    } else {
+      fetchOpts = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": token
+        },
+        body: JSON.stringify({
+          source: sourcePayload.value,
+          target: targetPayload.value
+        })
+      };
+    }
+
+    let response = await fetch("/api/faceswap", fetchOpts);
+
+    if (response.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      if (hasFile) {
+        fetchOpts.headers["X-Session-Token"] = fresh;
+      } else {
+        fetchOpts.headers["X-Session-Token"] = fresh;
+      }
+      response = await fetch("/api/faceswap", fetchOpts);
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "faceswap-result-card";
+
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "faceswap-result-image-wrap";
+
+    const img = document.createElement("img");
+    img.className = "faceswap-result-img";
+    img.src = objectUrl;
+    img.alt = "Faceswap result";
+    img.loading = "lazy";
+    imageWrap.append(img);
+
+    const meta = document.createElement("div");
+    meta.className = "faceswap-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "faceswap-result-info";
+    info.innerHTML = `
+      <strong>🔄 Faceswap Result</strong>
+      <span>Wajah berhasil ditukar.</span>
+    `;
+
+    const actions = document.createElement("div");
+    actions.className = "faceswap-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-faceswap-${Date.now()}.jpg`;
+    download.textContent = "↓ SIMPAN HASIL";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(imageWrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = "Berhasil swap wajah";
+
+  } catch (err) {
+    console.error("[FACESWAP] Error:", err.message);
+    showMessage(err.message || "Gagal swap wajah. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="faceswap-gen-icon">🔄</span>
+        <span class="faceswap-gen-text">SWAP FACE</span>
+        <span class="faceswap-gen-arrow">↗</span>
+      `;
+    }
+  }
 }
 
 // Jalankan setelah DOM ready

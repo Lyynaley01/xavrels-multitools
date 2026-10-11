@@ -1456,6 +1456,125 @@ app.post("/api/gen-dana", requireAuth, async (req, res) => {
   }
 });
 
+/* ============================================================
+   /api/faceswap — Face Swap AI (via jerexd API)
+   ============================================================ */
+const FACESWAP_API_BASE = "https://api.jerexd.my.id/api/ai/faceswap";
+
+app.post(
+  "/api/faceswap",
+  requireAuth,
+  upload.fields([
+    { name: "sourceFile", maxCount: 1 },
+    { name: "targetFile", maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      // ── LAYER 1: Bot detection ──
+      if (isLikelyBot(req)) {
+        console.log(`🚫 [/api/faceswap] Bot detected`);
+        return res.status(403).json({ ok: false, error: "Akses ditolak." });
+      }
+
+      // ── LAYER 2: Rate limit (3/menit — proses AI berat) ──
+      const identifier = req.ip || "unknown";
+      const limit = checkEndpointLimit(identifier, "faceswap", 3);
+      if (!limit.ok) {
+        res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+        return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+      }
+
+      // ── LAYER 3: Input validation ──
+      let sourceUrl = "";
+      let targetUrl = "";
+
+      const sourceFile = req.files?.sourceFile?.[0];
+      const targetFile = req.files?.targetFile?.[0];
+
+      if (sourceFile) {
+        console.log(`📤 [FACESWAP] Upload source: ${sourceFile.originalname} (${sourceFile.size} bytes)`);
+        const uploaded = await uploadImageToCdn(sourceFile.buffer, sourceFile.originalname || "source.jpg");
+        sourceUrl = validatePublicHttpsUrl(uploaded);
+      } else if (req.body?.sourceUrl) {
+        sourceUrl = validatePublicHttpsUrl(safeText(req.body.sourceUrl, 1500));
+      } else if (req.body?.source) {
+        sourceUrl = validatePublicHttpsUrl(safeText(req.body.source, 1500));
+      }
+
+      if (targetFile) {
+        console.log(`📤 [FACESWAP] Upload target: ${targetFile.originalname} (${targetFile.size} bytes)`);
+        const uploaded = await uploadImageToCdn(targetFile.buffer, targetFile.originalname || "target.jpg");
+        targetUrl = validatePublicHttpsUrl(uploaded);
+      } else if (req.body?.targetUrl) {
+        targetUrl = validatePublicHttpsUrl(safeText(req.body.targetUrl, 1500));
+      } else if (req.body?.target) {
+        targetUrl = validatePublicHttpsUrl(safeText(req.body.target, 1500));
+      }
+
+      if (!sourceUrl) throw new Error("Foto wajah pengganti wajib diisi (URL atau file).");
+      if (!targetUrl) throw new Error("Foto wajah yang mau diganti wajib diisi (URL atau file).");
+      if (sourceUrl === targetUrl) throw new Error("Source dan target tidak boleh sama.");
+
+      // ── LAYER 4: Ambil apikey dari env ──
+      const faceswapKey = requireSecret("FACESWAP_API_KEY");
+
+      // ── LAYER 5: Hit provider ──
+      console.log(`📡 [/api/faceswap] Processing swap...`);
+      const response = await http.post(
+        `${FACESWAP_API_BASE}?apikey=${encodeURIComponent(faceswapKey)}`,
+        { source: sourceUrl, target: targetUrl },
+        {
+          timeout: 90_000,
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": BROWSER_UA,
+            "Accept": "application/json, */*"
+          }
+        }
+      );
+
+      // ── LAYER 6: Validate response ──
+      const data = response.data;
+      if (!data || data.status !== true) {
+        throw new Error(data?.message || data?.error || "Provider gagal memproses faceswap.");
+      }
+      const resultImageUrl = data?.result?.image;
+      if (typeof resultImageUrl !== "string" || !/^https:\/\//i.test(resultImageUrl)) {
+        throw new Error("Provider tidak mengembalikan URL gambar yang valid.");
+      }
+
+      // ── LAYER 7: Download image dari provider & forward ke client ──
+      console.log(`📥 [/api/faceswap] Fetch result image...`);
+      const imageResp = await http.get(resultImageUrl, {
+        responseType: "arraybuffer",
+        timeout: 60_000,
+        maxContentLength: 15 * 1024 * 1024,
+        headers: {
+          "User-Agent": BROWSER_UA,
+          "Accept": "image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8"
+        }
+      });
+
+      const buf = Buffer.from(imageResp.data);
+      if (!buf.length) throw new Error("Gambar hasil kosong.");
+      if (buf.length > 15 * 1024 * 1024) throw new Error("Gambar hasil terlalu besar.");
+
+      const ct = String(imageResp.headers["content-type"] || "").toLowerCase();
+      const finalCt = ct.startsWith("image/") ? ct : "image/jpeg";
+
+      // ── LAYER 8: Return ──
+      res.set("Content-Type", finalCt);
+      res.set("Cache-Control", "no-store");
+      res.set("Content-Disposition", 'inline; filename="xavrels-faceswap.jpg"');
+      res.send(buf);
+
+    } catch (err) {
+      console.error("❌ [/api/faceswap]", err.message);
+      sendError(res, err);
+    }
+  }
+);
+
 
 /* ============================================================
    FALLBACK
