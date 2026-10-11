@@ -2510,8 +2510,7 @@ else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider
    Kalau user klik "Nanti Saja" atau close → gak muncul lagi.
    ========================================================= */
 (function initPromoPopup() {
-  const POPUP_KEY = "xavrels_promo_dismissed_v1";
-  const SHOW_DELAY = 1200; // 1.2 detik biar halaman selesai load dulu
+  const SHOW_DELAY = 1200;
   const POPUP_URL = "https://whatsapp.com/channel/0029Vb82UlD30LKGBwvlhB28";
 
   const popup = document.getElementById("promoPopup");
@@ -2526,19 +2525,6 @@ else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider
     return;
   }
 
-  // ── Cek udah pernah dismiss ──
-  let dismissed = false;
-  try {
-    dismissed = localStorage.getItem(POPUP_KEY) === "true";
-  } catch (_) {
-    // localStorage bisa error di private mode — fallback: muncul terus
-    dismissed = false;
-  }
-
-  if (dismissed) {
-    console.log("[PROMO] User udah pernah dismiss — skip");
-    return;
-  }
 
   // ── Function buka popup ──
   function openPopup() {
@@ -2560,20 +2546,15 @@ else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider
 
   // ── Function tutup popup ──
   function closePopup() {
-    popup.classList.remove("is-visible");
-    document.body.style.overflow = "";
+  popup.classList.remove("is-visible");
+  document.body.style.overflow = "";
 
-    setTimeout(() => {
-      popup.hidden = true;
-    }, 400);
+  setTimeout(() => {
+    popup.hidden = true;
+  }, 400);
 
-    // Simpan ke localStorage biar gak muncul lagi
-    try {
-      localStorage.setItem(POPUP_KEY, "true");
-    } catch (_) {}
-
-    console.log("[PROMO] Popup ditutup & di-dismiss");
-  }
+  console.log("[PROMO] Popup ditutup");
+}
 
   // ── Event: close button ──
   if (closeBtn) {
