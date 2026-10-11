@@ -275,11 +275,19 @@ function setFile(file) {
   selectedFile = file;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    previewImg.src = ev.target.result;
-    previewName.textContent = file.name;
-    previewSize.textContent = formatBytes(file.size);
-    dropzoneInner.hidden = true;
-    dropzonePreview.hidden = false;
+    // Re-query setiap kali — karena restoreOriginalForm() bisa replace DOM
+    // dan referensi lama jadi detached (tidak kelihatan meski datanya ada)
+    const previewImgEl  = document.getElementById("previewImg")   || previewImg;
+    const previewNameEl = document.getElementById("previewName")  || previewName;
+    const previewSizeEl = document.getElementById("previewSize")  || previewSize;
+    const dzInnerEl     = document.getElementById("dropzoneInner")   || dropzoneInner;
+    const dzPreviewEl   = document.getElementById("dropzonePreview") || dropzonePreview;
+
+    previewImgEl.src          = ev.target.result;
+    previewNameEl.textContent = file.name;
+    previewSizeEl.textContent = formatBytes(file.size);
+    dzInnerEl.hidden          = true;
+    dzPreviewEl.hidden        = false;
     clearResult();
   };
   reader.readAsDataURL(file);
@@ -287,10 +295,16 @@ function setFile(file) {
 
 function clearSelectedFile() {
   selectedFile = null;
-  if (fileInput) fileInput.value = "";
-  if (previewImg) previewImg.src = "";
-  if (dropzoneInner) dropzoneInner.hidden = false;
-  if (dropzonePreview) dropzonePreview.hidden = true;
+  // Re-query setiap kali supaya tidak pakai referensi detached setelah restoreOriginalForm()
+  const fileInputEl   = document.getElementById("fileInput")       || fileInput;
+  const previewImgEl  = document.getElementById("previewImg")      || previewImg;
+  const dzInnerEl     = document.getElementById("dropzoneInner")   || dropzoneInner;
+  const dzPreviewEl   = document.getElementById("dropzonePreview") || dropzonePreview;
+
+  if (fileInputEl)  fileInputEl.value   = "";
+  if (previewImgEl) previewImgEl.src    = "";
+  if (dzInnerEl)    dzInnerEl.hidden    = false;
+  if (dzPreviewEl)  dzPreviewEl.hidden  = true;
 }
 
 if (dropzone) {
