@@ -60,6 +60,41 @@ h1 span{color:var(--red);-webkit-text-stroke:1px var(--ink);text-shadow:3px 4px 
 
 .hero-art{height:410px;position:relative;display:grid;place-items:center;isolation:isolate;overflow:hidden}
 .burst{position:absolute;width:310px;height:310px;background:var(--yellow);clip-path:polygon(50% 0%,59% 19%,78% 5%,78% 28%,100% 26%,86% 46%,100% 59%,78% 66%,87% 91%,62% 82%,50% 100%,39% 81%,15% 95%,22% 69%,0 59%,16% 43%,2% 23%,27% 28%,27% 7%,43% 19%);transform:rotate(10deg);z-index:-1;filter:drop-shadow(6px 6px 0 var(--ink))}
+
+/* ===== HERO ORB IMAGE — versi foto Spiderman bulat ===== */
+.hero-orb-image {
+  width: 240px;
+  height: 240px;
+  border: 4px solid var(--ink);
+  border-radius: 50%;
+  background: #1a1b2e;
+  box-shadow: 10px 12px 0 var(--ink);
+  position: relative;
+  transform: rotate(-6deg);
+  overflow: hidden;
+  animation: float 5s ease-in-out infinite;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.hero-orb-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  border-radius: 50%;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Override pseudo-element lama kalau ada bentrok */
+.hero-orb-image::before {
+  display: none;
+}
+
 .hero-orb{width:225px;height:245px;border:4px solid var(--ink);border-radius:48% 48% 44% 44%;background:linear-gradient(140deg,#f34b55 0%,#d51f35 70%);box-shadow:10px 12px 0 var(--ink);position:relative;transform:rotate(-9deg);overflow:hidden;animation:float 5s ease-in-out infinite}
 .hero-orb:before{content:"";position:absolute;inset:-20px;background:repeating-conic-gradient(from 10deg at 50% 50%,transparent 0 18deg,#7f1428 18.3deg 19deg,transparent 19.3deg 36deg);opacity:.7}
 .orb-web{position:absolute;inset:0;background:repeating-radial-gradient(ellipse at 50% 45%,transparent 0 22px,#751a2c 23px 24px,transparent 25px 40px);opacity:.8}
@@ -314,6 +349,7 @@ h1{font-size:clamp(48px,15vw,78px);margin-top:24px}
 .hero-art{height:320px;margin:0;transform:none}
 .burst{width:240px;height:240px}
 .hero-orb{width:174px;height:190px}
+.hero-orb-image{width:200px;height:200px}
 .orb-eye{top:72px;width:53px;height:36px}
 .eye-left{left:25px}
 .eye-right{right:24px}
