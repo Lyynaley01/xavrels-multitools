@@ -2774,8 +2774,8 @@ footer>span:nth-child(2){order:3;width:100%}
 /* ===== Responsive 620 ===== */
 @media (max-width: 620px) {
   .empty-state {
-    width: 100%;
-    margin: 0 22px 40px;
+    width: calc(100% - 44px);   /* ← konsisten kayak desktop */
+    margin: 0 auto 40px;        /* ← center pakai auto */
     padding: 28px 20px;
     gap: 14px;
     box-shadow: 4px 4px 0 var(--ink);
