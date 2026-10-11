@@ -144,11 +144,13 @@ const toolInfo = {
   fpreset: {
   title: "AM PRESET FINDER", titleLead: "AM PRESET", titleAccent: "FINDER", issue: "TOOL 06", number: "06",
   category: "PRESET LAB", icon: "🎬",
-  description: "Cari preset Alight Motion dari link video TikTok yang kamu berikan.",
-  tip: "Gunakan link video TikTok, contoh: https://www.tiktok.com/@user/video/123",
+  description: "Cari preset Alight Motion dari link TikTok atau keyword.",
+  tip: "Pilih mode: paste link video langsung, atau cari pakai keyword.",
   label: "Link video TikTok", placeholder: "https://www.tiktok.com/@user/video/...", inputType: "url",
-  endpoint: "api/fpreset", button: "FIND PRESET",
-  supportsUpload: false
+  endpoint: "api/fpreset", searchEndpoint: "api/fpreset-search",
+  button: "FIND PRESET", searchButton: "CARI VIDEO",
+  supportsUpload: false,
+  supportsModeSwitch: true
 }
 };
 
@@ -269,6 +271,31 @@ document.addEventListener("paste", (e) => {
 function switchInputMode(mode) {
   inputMode = mode;
   $$(".input-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mode === mode));
+
+  // FPRESET pakai 2 mode: url = link video, upload = search keyword
+  if (activeTool === "fpreset") {
+    const info = toolInfo.fpreset;
+    if (mode === "url") {
+      if (modeUrl) modeUrl.hidden = false;
+      if (modeUpload) modeUpload.hidden = true;
+      $("#inputLabel").textContent = info.label;
+      input.placeholder = info.placeholder;
+      input.type = "url";
+      submitLabel.textContent = info.button;
+    } else {
+      if (modeUrl) modeUrl.hidden = true;
+      if (modeUpload) modeUpload.hidden = true; // fpreset gak pakai upload file
+      // Tampilkan mode search: pakai input URL, tapi label & placeholder beda
+      if (modeUrl) modeUrl.hidden = false;
+      $("#inputLabel").textContent = "Keyword pencarian video";
+      input.placeholder = "contoh: JJ kicau mania";
+      input.type = "text";
+      submitLabel.textContent = info.searchButton;
+    }
+    clearResult();
+    return;
+  }
+
   if (mode === "url") {
     if (modeUrl) modeUrl.hidden = false;
     if (modeUpload) modeUpload.hidden = true;
@@ -1266,6 +1293,176 @@ function renderFpreset(data) {
   if (note) note.textContent = `${presetLinks.length} preset ditemukan`;
 }
 
+/* =========================================================
+   RENDER FPRESET SEARCH — Grid card video TikTok
+   ========================================================= */
+function renderFpresetSearch(data) {
+  const videos = Array.isArray(data.videos) ? data.videos : [];
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+
+  const summary = document.createElement("div");
+  summary.className = "result-summary";
+  summary.innerHTML = `<strong>${videos.length} video ditemukan</strong><span>Klik salah satu untuk cari preset-nya.</span>`;
+  resultArea.append(summary);
+
+  if (!videos.length) {
+    const empty = document.createElement("div");
+    empty.className = "result-msg";
+    empty.textContent = "Tidak ada video preset untuk keyword ini. Coba kata kunci lain.";
+    resultArea.append(empty);
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "fpreset-search-grid";
+
+  videos.forEach((v, i) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "fpreset-search-card";
+    card.style.animationDelay = `${i * 30}ms`;
+
+    if (v.cover) {
+      card.style.backgroundImage = `url("${v.cover}")`;
+      card.classList.add("has-cover");
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "fpreset-search-overlay";
+
+    const body = document.createElement("div");
+    body.className = "fpreset-search-body";
+
+    const nick = document.createElement("strong");
+    nick.textContent = v.author?.nickname || v.author?.uniqueId || "Creator TikTok";
+
+    const handle = document.createElement("span");
+    handle.className = "fpreset-search-handle";
+    handle.textContent = v.author?.uniqueId ? `@${v.author.uniqueId.replace(/^@/, "")}` : "";
+
+    const desc = document.createElement("span");
+    desc.className = "fpreset-search-desc";
+    desc.textContent = v.description || "Tanpa deskripsi";
+
+    const statsRow = document.createElement("div");
+    statsRow.className = "fpreset-search-stats";
+    if (v.stats?.views) {
+      const s = document.createElement("span");
+      s.innerHTML = `👁 <b>${formatNumber(v.stats.views)}</b>`;
+      statsRow.append(s);
+    }
+    if (v.stats?.likes) {
+      const s = document.createElement("span");
+      s.innerHTML = `❤️ <b>${formatNumber(v.stats.likes)}</b>`;
+      statsRow.append(s);
+    }
+    if (statsRow.children.length) body.append(statsRow);
+
+    body.append(nick);
+    if (handle.textContent) body.append(handle);
+    body.append(desc);
+    overlay.append(body);
+
+    const cta = document.createElement("div");
+    cta.className = "fpreset-search-cta";
+    cta.innerHTML = `🔍 <span>CARI PRESET</span>`;
+    overlay.append(cta);
+
+    card.append(overlay);
+
+    card.addEventListener("click", () => findPresetFromVideo(v.url, card));
+    grid.append(card);
+  });
+
+  resultArea.append(grid);
+
+  const note = $("#resultHeadingNote");
+  if (note) note.textContent = `${videos.length} video`;
+}
+
+
+/* =========================================================
+   EXECUTE FIND PRESET DARI CARD VIDEO
+   ========================================================= */
+async function findPresetFromVideo(videoUrl, cardEl) {
+  if (!videoUrl) return;
+
+  // Loading state di card
+  if (cardEl) {
+    cardEl.disabled = true;
+    cardEl.classList.add("is-loading");
+    const cta = cardEl.querySelector(".fpreset-search-cta");
+    if (cta) cta.innerHTML = `⏳ <span>MENCARI…</span>`;
+  }
+
+  // Scroll ke atas result panel biar user lihat progress
+  resultShell.hidden = false;
+  const note = $("#resultHeadingNote");
+  if (note) note.textContent = "Mencari preset dari video…";
+
+  try {
+    const token = await ensureSession();
+
+    let response = await fetch("/api/fpreset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token
+      },
+      body: JSON.stringify({ url: videoUrl })
+    });
+
+    if (response.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      response = await fetch("/api/fpreset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh
+        },
+        body: JSON.stringify({ url: videoUrl })
+      });
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      if (contentType.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "Gagal mencari preset.");
+
+    renderFpreset(data);
+
+    // Balikin state card
+    if (cardEl) {
+      cardEl.disabled = false;
+      cardEl.classList.remove("is-loading");
+      const cta = cardEl.querySelector(".fpreset-search-cta");
+      if (cta) cta.innerHTML = `🔍 <span>CARI PRESET</span>`;
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+  } catch (err) {
+    showMessage(err.message || "Gagal mencari preset dari video ini.", "error");
+    if (cardEl) {
+      cardEl.disabled = false;
+      cardEl.classList.remove("is-loading");
+      const cta = cardEl.querySelector(".fpreset-search-cta");
+      if (cta) cta.innerHTML = `🔍 <span>CARI PRESET</span>`;
+    }
+  }
+}
+
 
 /* =========================================================
    FPRESET VIDEO MODAL
@@ -1493,15 +1690,18 @@ function openTool(key, updateHistory = true) {
   input.autocomplete = info.inputType === "url" ? "url" : "off";
 
   clearSelectedFile();
-  if (info.supportsUpload) {
-    if (inputTabs) inputTabs.hidden = false;
-    switchInputMode("url");
-  } else {
-    if (inputTabs) inputTabs.hidden = true;
-    if (modeUrl) modeUrl.hidden = false;
-    if (modeUpload) modeUpload.hidden = true;
-    inputMode = "url";
-  }
+if (info.supportsUpload) {
+  if (inputTabs) inputTabs.hidden = false;
+  switchInputMode("url");
+} else if (info.supportsModeSwitch) {
+  if (inputTabs) inputTabs.hidden = false;
+  switchInputMode("url"); // mode awal = url
+} else {
+  if (inputTabs) inputTabs.hidden = true;
+  if (modeUrl) modeUrl.hidden = false;
+  if (modeUpload) modeUpload.hidden = true;
+  inputMode = "url";
+}
 
   $("#secondField").hidden = key !== "react";
   extra.value = "";
@@ -1603,19 +1803,31 @@ if (form) {
       fd.append("image", selectedFile, selectedFile.name);
       fetchOptions = { method: "POST", body: fd };
     } else {
-      const value = input.value.trim();
-      if (!value) return;
-      const payload = (activeTool === "pinterest" || activeTool === "spotify")
-  ? { query: value }
-  : { url: value };
-// fpreset pakai { url: value } — sama seperti hd/remove-bg/react
-      if (activeTool === "react") payload.emoji = extra.value.trim();
-      fetchOptions = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      };
-    }
+  const value = input.value.trim();
+  if (!value) return;
+
+  let payload;
+  let endpoint = info.endpoint;
+
+  if (activeTool === "fpreset" && inputMode === "upload") {
+    // FPRESET mode "Cari Preset" — pakai keyword, endpoint search
+    payload = { query: value };
+    endpoint = info.searchEndpoint;
+  } else if (activeTool === "pinterest" || activeTool === "spotify") {
+    payload = { query: value };
+  } else {
+    payload = { url: value };
+  }
+
+  if (activeTool === "react") payload.emoji = extra.value.trim();
+
+  fetchOptions = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    __endpoint: endpoint // simpan sementara
+  };
+}
 
     submit.disabled = true;
     submitLabel.textContent = "PROCESSING...";
@@ -1623,17 +1835,19 @@ if (form) {
 
     try {
       const token = await ensureSession();
-      if (!fetchOptions.headers) fetchOptions.headers = {};
+      if (!s) fetchOptions.headers = {};
       fetchOptions.headers["X-Session-Token"] = token;
 
-      let response = await fetch(info.endpoint, fetchOptions);
+      const finalEndpoint = fetchOptions.__endpoint || info.endpoint;
+delete fetchOptions.__endpoint;
+let response = await fetch(finalEndpoint, fetchOptions);
 
       if (response.status === 401) {
         console.warn("[SESSION] 401 — refresh token & retry");
         sessionToken = null; sessionExpiresAt = 0;
         const newToken = await ensureSession();
         fetchOptions.headers["X-Session-Token"] = newToken;
-        response = await fetch(info.endpoint, fetchOptions);
+response = await fetch(finalEndpoint, fetchOptions);
       }
 
       const contentType = response.headers.get("content-type") || "";
@@ -1653,7 +1867,10 @@ if (form) {
         if (!data.ok) throw new Error(data.error || "Request gagal.");
         if (activeTool === "pinterest") renderPinterest(data);
 else if (activeTool === "spotify") renderMusic(data);
-else if (activeTool === "fpreset") renderFpreset(data);
+else if (activeTool === "fpreset") {
+  if (inputMode === "upload") renderFpresetSearch(data);
+  else renderFpreset(data);
+}
 else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
       }
     } catch (error) {

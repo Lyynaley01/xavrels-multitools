@@ -2049,3 +2049,152 @@ footer>span:nth-child(2){order:3;width:100%}
   .fpreset-video-caption { font-size: 11px; }
   .fpv-meta-item { font-size: 9px; }
 }
+/* =========================================================
+   FPRESET SEARCH — Grid Card Video TikTok
+   ========================================================= */
+.fpreset-search-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fpreset-search-card {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  background: linear-gradient(135deg, #171b2d, #29203a 55%, #111522);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 10px;
+  aspect-ratio: 3 / 4;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.22s;
+  animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  text-align: left;
+}
+.fpreset-search-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(5, 7, 15, 0.92) 0%, rgba(5, 7, 15, 0.55) 45%, rgba(5, 7, 15, 0.15) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.fpreset-search-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.fpreset-search-card:active {
+  transform: translateY(-2px) scale(0.98);
+}
+.fpreset-search-card:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.fpreset-search-card.is-loading::after {
+  background: rgba(5, 7, 15, 0.85);
+}
+
+.fpreset-search-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px;
+  z-index: 2;
+  color: #fff;
+}
+.fpreset-search-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.fpreset-search-body strong {
+  font-family: "Bangers", cursive;
+  font-size: 16px;
+  letter-spacing: 0.6px;
+  color: #fff;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+.fpreset-search-handle {
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fpreset-search-desc {
+  font-size: 9px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.fpreset-search-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.fpreset-search-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 7px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+.fpreset-search-stats b { color: #fff; font-weight: 900; }
+
+.fpreset-search-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 10px;
+  background: var(--red);
+  border: 1.5px solid var(--red);
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #fff;
+  transition: background 0.2s, transform 0.12s;
+  margin-top: 4px;
+}
+.fpreset-search-card:hover .fpreset-search-cta {
+  background: #c4001f;
+  border-color: #c4001f;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 620px) {
+  .fpreset-search-grid {
+    gap: 8px;
+  }
+  .fpreset-search-body strong { font-size: 14px; }
+  .fpreset-search-desc { -webkit-line-clamp: 1; }
+}

@@ -774,6 +774,94 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
   }
 });
 
+/* ============================================================
+   FPRESET SEARCH — Cari video TikTok by keyword
+   ============================================================ */
+const FPRESET_SEARCH_API = process.env.FPRESET_SEARCH_API || "https://amfinder.web.id/api/search";
+
+app.post("/api/fpreset-search", requireAuth, async (req, res) => {
+  try {
+    const q = safeText(req.body?.query, 120);
+    if (q.length < 2) throw new Error("Masukkan keyword minimal 2 karakter.");
+
+    const response = await http.get(FPRESET_SEARCH_API, {
+      params: { mode: "pick", q },
+      timeout: 45_000,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "text/event-stream, application/json, text/plain, */*"
+      },
+      validateStatus: () => true
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      const apiMsg = response.data?.message || response.data?.error || response.data?.description;
+      throw new Error(apiMsg ? `API error: ${apiMsg}` : `API mengembalikan HTTP ${response.status}.`);
+    }
+
+    const data = fp_parseAmFinderResponse(response.data);
+    if (!data) throw new Error("API tidak mengembalikan data.");
+
+    // Response bisa berupa array langsung atau object dengan field tertentu
+    let rawList = [];
+    if (Array.isArray(data)) rawList = data;
+    else if (Array.isArray(data.videos)) rawList = data.videos;
+    else if (Array.isArray(data.results)) rawList = data.results;
+    else if (Array.isArray(data.data)) rawList = data.data;
+    else if (Array.isArray(data.items)) rawList = data.items;
+
+    const videos = rawList.slice(0, 30).map((v) => {
+      const author = v.author || v.authorDetail || v.user || {};
+      const stats = v.stats || v.statistics || {};
+      const videoId = String(v.id || v.videoId || v.video_id || "");
+      const url = v.url || v.videoUrl || v.video_url
+        || (videoId && author.uniqueId ? `https://www.tiktok.com/@${author.uniqueId}/video/${videoId}` : "")
+        || "";
+
+      const firstString = (...vals) => {
+        for (const val of vals) {
+          if (typeof val === "string" && val.trim()) return val.trim();
+          if (typeof val === "number" && Number.isFinite(val)) return String(val);
+        }
+        return "";
+      };
+      const firstCount = (...vals) => {
+        for (const val of vals) {
+          if (val === null || val === undefined || val === "") continue;
+          const n = Number(val);
+          if (Number.isFinite(n) && n >= 0) return n;
+        }
+        return 0;
+      };
+
+      const cover = firstString(v.cover, v.thumbnail, v.thumb, v.dynamicCover, v.dynamic_cover);
+      const description = firstString(v.description, v.desc, v.caption, v.title);
+
+      return {
+        videoId,
+        url,
+        cover: /^https?:\/\//i.test(cover) ? cover : "",
+        description: safeText(description, 200),
+        author: {
+          uniqueId: safeText(firstString(author.uniqueId, author.username, author.unique_id), 80),
+          nickname: safeText(firstString(author.nickname, author.displayName, author.name), 120)
+        },
+        stats: {
+          views: firstCount(stats.views, stats.playCount, stats.viewCount, stats.play_count),
+          likes: firstCount(stats.likes, stats.diggCount, stats.likeCount, stats.digg_count)
+        }
+      };
+    }).filter((v) => v.url && /tiktok\.com/i.test(v.url));
+
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, videos });
+
+  } catch (err) {
+    console.error("❌ [/api/fpreset-search]", err.message);
+    sendError(res, err);
+  }
+});
+
 
 /* ============================================================
    FALLBACK
