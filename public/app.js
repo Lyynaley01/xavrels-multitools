@@ -140,7 +140,7 @@ const toolInfo = {
     label: "Judul lagu atau nama artis", placeholder: "judul lagu atau nama artis", inputType: "text",
     endpoint: "api/spotify", button: "FIND MUSIC",
     supportsUpload: false
-  }
+  },
   fpreset: {
   title: "AM PRESET FINDER", titleLead: "AM PRESET", titleAccent: "FINDER", issue: "TOOL 06", number: "06",
   category: "PRESET LAB", icon: "🎬",
@@ -149,7 +149,7 @@ const toolInfo = {
   label: "Link video TikTok", placeholder: "https://www.tiktok.com/@user/video/...", inputType: "url",
   endpoint: "api/fpreset", button: "FIND PRESET",
   supportsUpload: false
-},
+}
 };
 
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
