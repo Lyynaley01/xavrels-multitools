@@ -185,6 +185,26 @@ const toolInfo = {
   endpoint: "api/gen-duo-ff", button: "GENERATE DUO",
   supportsUpload: false,
   isCustomTool: "gen-duo-ff"
+},
+"brat-vid": {
+  title: "BRAT VID", titleLead: "BRAT", titleAccent: "VID", issue: "TOOL 10", number: "10",
+  category: "FUN LAB", icon: "🎬",
+  description: "Generate video teks Brat bergerak dari text yang kamu masukkan.",
+  tip: "Masukkan teks, klik GENERATE, video Brat akan dibuat otomatis.",
+  label: "Teks Brat", placeholder: "contoh: Xavrels ganteng", inputType: "text",
+  endpoint: "api/brat-vid", button: "GENERATE VIDEO",
+  supportsUpload: false,
+  isCustomTool: "brat-vid"
+},
+"gen-dana": {
+  title: "GEN DANA", titleLead: "GEN", titleAccent: "DANA", issue: "TOOL 11", number: "11",
+  category: "FUN LAB", icon: "💳",
+  description: "Generate gambar saldo Dana palsu sesuai nominal yang kamu masukkan.",
+  tip: "Masukkan nominal saldo, klik GENERATE, gambar Dana siap di-download.",
+  label: "Nominal saldo (Rp)", placeholder: "contoh: 56000", inputType: "text",
+  endpoint: "api/gen-dana", button: "GENERATE GAMBAR",
+  supportsUpload: false,
+  isCustomTool: "gen-dana"
 }
 };
 
@@ -2504,7 +2524,7 @@ function openTool(key, updateHistory = true) {
     $("#workspaceIcon").textContent = info.icon;
     $("#workspaceCategory").textContent = info.category;
     
-    const titleEl = $("#workspaceTitle");
+    const cecanTitleEl = $("#workspaceTitle");
     titleEl.replaceChildren();
     const lead = document.createElement("span"); lead.textContent = info.titleLead;
     const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
@@ -2528,6 +2548,66 @@ function openTool(key, updateHistory = true) {
   }
   
   // ═══════════════════════════════════════════════
+// SPECIAL TOOL: BRAT VID
+// ═══════════════════════════════════════════════
+if (key === "brat-vid") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+
+  const bratTitleEl = $("#workspaceTitle");
+  bratTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  bratTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  renderBratVidTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
+
+// ═══════════════════════════════════════════════
+// SPECIAL TOOL: GEN DANA
+// ═══════════════════════════════════════════════
+if (key === "gen-dana") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+
+  const danaTitleEl = $("#workspaceTitle");
+danaTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  danaTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  renderGenDanaTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
+  
+  // ═══════════════════════════════════════════════
 // SPECIAL TOOL: GEN LOBBY FF & GEN DUO FF
 // ═══════════════════════════════════════════════
 if (key === "gen-lobby-ff" || key === "gen-duo-ff") {
@@ -2536,11 +2616,11 @@ if (key === "gen-lobby-ff" || key === "gen-duo-ff") {
   $("#workspaceIcon").textContent = info.icon;
   $("#workspaceCategory").textContent = info.category;
 
-  const titleEl = $("#workspaceTitle");
-  titleEl.replaceChildren();
+  const ffTitleEl = $("#workspaceTitle");
+ffTitleEl.replaceChildren();
   const lead = document.createElement("span"); lead.textContent = info.titleLead;
   const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
-  titleEl.append(lead, document.createTextNode(" "), accent);
+  ffTitleEl.append(lead, document.createTextNode(" "), accent);
 
   $("#workspaceDescription").textContent = info.description;
   $("#workspaceTip").textContent = info.tip;
@@ -2648,7 +2728,7 @@ fpresetInDetailView = false;
 }
 
 function syncRoute() {
-  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset|random-cecan|gen-lobby-ff|gen-duo-ff)$/);
+  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset|random-cecan|gen-lobby-ff|gen-duo-ff|brat-vid|gen-dana)$/);
   if (match) openTool(match[1], false);
   else goHome(false);
 }
@@ -2904,6 +2984,436 @@ else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider
   // ── Munculin popup setelah delay ──
   setTimeout(openPopup, SHOW_DELAY);
 })();
+
+/* =========================================================
+   BRAT VID — Custom Tool UI
+   ========================================================= */
+function renderBratVidTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const wrap = document.createElement("div");
+  wrap.className = "bratvid-custom-ui";
+
+  const label = document.createElement("label");
+  label.className = "bratvid-label";
+  label.textContent = "Masukkan teks Brat:";
+  wrap.append(label);
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "bratvid-textarea";
+  textarea.placeholder = "contoh: Xavrels ganteng\nTeks bisa multi-baris maks 200 karakter";
+  textarea.maxLength = 200;
+  textarea.id = "bratVidText";
+  textarea.rows = 3;
+  wrap.append(textarea);
+
+  const counter = document.createElement("div");
+  counter.className = "bratvid-counter";
+  counter.innerHTML = `<span id="bratVidCount">0</span> / 200`;
+  wrap.append(counter);
+
+  textarea.addEventListener("input", () => {
+    const c = document.getElementById("bratVidCount");
+    if (c) c.textContent = String(textarea.value.length);
+  });
+
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "bratvid-gen-btn";
+  genBtn.id = "bratVidGenBtn";
+  genBtn.innerHTML = `
+    <span class="bratvid-gen-icon">🎬</span>
+    <span class="bratvid-gen-text">GENERATE VIDEO</span>
+    <span class="bratvid-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runBratVidGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "bratvid-hint";
+  hint.textContent = "💡 Video diproses 15-60 detik. Hasil format MP4, bisa langsung di-download.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  setTimeout(() => textarea.focus({ preventScroll: true }), 200);
+}
+
+async function runBratVidGenerate(btnEl) {
+  const text = document.getElementById("bratVidText")?.value?.trim() || "";
+
+  if (!text) {
+    showMessage("Teks tidak boleh kosong.", "error");
+    return;
+  }
+  if (text.length > 200) {
+    showMessage("Teks maksimal 200 karakter.", "error");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="bratvid-gen-icon">⏳</span>
+      <span class="bratvid-gen-text">GENERATING VIDEO...</span>
+      <span class="bratvid-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang generate video Brat... 🎬 (15–60 detik)", "loading");
+
+  try {
+    const token = await ensureSession();
+    const url = "/api/brat-vid";
+
+    let response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    if (response.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh,
+        },
+        body: JSON.stringify({ text }),
+      });
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "bratvid-result-card";
+
+    const videoWrap = document.createElement("div");
+    videoWrap.className = "bratvid-result-video-wrap";
+
+    const video = document.createElement("video");
+    video.className = "bratvid-result-video";
+    video.src = objectUrl;
+    video.controls = true;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+
+    videoWrap.append(video);
+
+    const meta = document.createElement("div");
+    meta.className = "bratvid-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "bratvid-result-info";
+    info.innerHTML = `
+      <strong>🎬 Brat Video</strong>
+      <span>${text.slice(0, 60)}${text.length > 60 ? "..." : ""}</span>
+    `;
+
+    const actions = document.createElement("div");
+    actions.className = "bratvid-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-brat-${Date.now()}.mp4`;
+    download.textContent = "↓ SIMPAN VIDEO";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(videoWrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = "Video berhasil dibuat";
+
+  } catch (err) {
+    console.error("[BRAT-VID] Error:", err.message);
+    showMessage(err.message || "Gagal generate video. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="bratvid-gen-icon">🎬</span>
+        <span class="bratvid-gen-text">GENERATE VIDEO</span>
+        <span class="bratvid-gen-arrow">↗</span>
+      `;
+    }
+  }
+}
+
+
+/* =========================================================
+   GEN DANA — Custom Tool UI
+   ========================================================= */
+function renderGenDanaTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const wrap = document.createElement("div");
+  wrap.className = "gendana-custom-ui";
+
+  const label = document.createElement("label");
+  label.className = "gendana-label";
+  label.textContent = "Masukkan nominal saldo Dana:";
+  wrap.append(label);
+
+  const inputWrap = document.createElement("div");
+  inputWrap.className = "gendana-input-wrap";
+
+  const prefix = document.createElement("span");
+  prefix.className = "gendana-prefix";
+  prefix.textContent = "Rp";
+
+  const inp = document.createElement("input");
+  inp.type = "number";
+  inp.className = "gendana-input";
+  inp.placeholder = "contoh: 56000";
+  inp.min = "1000";
+  inp.max = "100000000";
+  inp.step = "1000";
+  inp.id = "gendanaAmount";
+
+  inputWrap.append(prefix, inp);
+  wrap.append(inputWrap);
+
+  const presetsWrap = document.createElement("div");
+  presetsWrap.className = "gendana-presets";
+
+  const presets = [10000, 50000, 100000, 500000, 1000000, 5000000];
+  presets.forEach(val => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "gendana-preset-btn";
+    btn.textContent = formatRupiahShort(val);
+    btn.dataset.value = String(val);
+    btn.addEventListener("click", () => {
+      inp.value = String(val);
+      presetsWrap.querySelectorAll(".gendana-preset-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateDisplay();
+    });
+    presetsWrap.append(btn);
+  });
+  wrap.append(presetsWrap);
+
+  const display = document.createElement("div");
+  display.className = "gendana-display";
+  display.innerHTML = `Saldo: <strong id="gendanaDisplay">Rp 0</strong>`;
+  wrap.append(display);
+
+  const updateDisplay = () => {
+    const val = parseInt(inp.value, 10) || 0;
+    const el = document.getElementById("gendanaDisplay");
+    if (el) el.textContent = formatRupiah(val);
+  };
+  inp.addEventListener("input", updateDisplay);
+
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "gendana-gen-btn";
+  genBtn.id = "gendanaGenBtn";
+  genBtn.innerHTML = `
+    <span class="gendana-gen-icon">💳</span>
+    <span class="gendana-gen-text">GENERATE GAMBAR</span>
+    <span class="gendana-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runGenDanaGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "gendana-hint";
+  hint.textContent = "💡 Nominal: Rp 1.000 – Rp 100.000.000. Hasil format PNG siap di-download.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  setTimeout(() => inp.focus({ preventScroll: true }), 200);
+
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      genBtn.click();
+    }
+  });
+}
+
+function formatRupiah(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "Rp 0";
+  return "Rp " + num.toLocaleString("id-ID");
+}
+
+function formatRupiahShort(n) {
+  const num = Number(n);
+  if (num >= 1_000_000) return `${num / 1_000_000}JT`;
+  if (num >= 1_000) return `${num / 1_000}RB`;
+  return String(num);
+}
+
+async function runGenDanaGenerate(btnEl) {
+  const amountStr = document.getElementById("gendanaAmount")?.value?.trim() || "";
+  const amount = parseInt(amountStr, 10);
+
+  if (!Number.isFinite(amount)) {
+    showMessage("Masukkan nominal yang valid (angka).", "error");
+    return;
+  }
+  if (amount < 1000) {
+    showMessage("Nominal minimal Rp 1.000.", "error");
+    return;
+  }
+  if (amount > 100000000) {
+    showMessage("Nominal maksimal Rp 100.000.000.", "error");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="gendana-gen-icon">⏳</span>
+      <span class="gendana-gen-text">GENERATING...</span>
+      <span class="gendana-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang generate gambar Dana... 💳", "loading");
+
+  try {
+    const token = await ensureSession();
+    const url = "/api/gen-dana";
+
+    let response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify({ amount }),
+    });
+
+    if (response.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh,
+        },
+        body: JSON.stringify({ amount }),
+      });
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "gendana-result-card";
+
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "gendana-result-image-wrap";
+
+    const img = document.createElement("img");
+    img.className = "gendana-result-img";
+    img.src = objectUrl;
+    img.alt = `Dana ${amount}`;
+    img.loading = "lazy";
+
+    imageWrap.append(img);
+
+    const meta = document.createElement("div");
+    meta.className = "gendana-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "gendana-result-info";
+    info.innerHTML = `
+      <strong>💳 Dana Saldo</strong>
+      <span>${formatRupiah(amount)}</span>
+    `;
+
+    const actions = document.createElement("div");
+    actions.className = "gendana-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-dana-${amount}-${Date.now()}.png`;
+    download.textContent = "↓ SIMPAN GAMBAR";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(imageWrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = `Berhasil — ${formatRupiah(amount)}`;
+
+  } catch (err) {
+    console.error("[GEN-DANA] Error:", err.message);
+    showMessage(err.message || "Gagal generate gambar. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="gendana-gen-icon">💳</span>
+        <span class="gendana-gen-text">GENERATE GAMBAR</span>
+        <span class="gendana-gen-arrow">↗</span>
+      `;
+    }
+  }
+}
 
 
 /* ===== Start ===== */
