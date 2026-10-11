@@ -1966,8 +1966,9 @@ function openTool(key, updateHistory = true) {
   document.body.classList.add("tool-page-active");
 
   $("#workspaceIssue").textContent = info.issue;
-  $("#workspaceIcon").textContent = info.icon;
-  $("#workspaceCategory").textContent = info.category;
+$("#workspaceIcon").textContent = info.icon;
+$("#workspaceCategory").textContent = info.category;
+$("#workspaceDecoNumber").textContent = info.number;  // ← tambah ini
 
   const titleEl = $("#workspaceTitle");
   titleEl.replaceChildren();

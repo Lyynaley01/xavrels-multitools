@@ -440,6 +440,159 @@ footer>span:nth-child(2){order:3;width:100%}
 .result-summary strong{font-size:12px}
 .result-summary span{font-size:10px;color:var(--muted)}
 
+/* =========================================================
+   WORKSPACE INTRO — Dekorasi biar kanan gak kosong
+   ========================================================= */
+
+/* ==== Topline right wrapper ==== */
+.workspace-topline-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.workspace-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #e7f8ef;
+  border: 1.5px solid var(--ink);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  color: #2cb67d;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.workspace-status .status-dot {
+  width: 6px;
+  height: 6px;
+  background: #2cb67d;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #2cb67d30;
+  animation: pulse 2s infinite;
+}
+
+/* ==== Decoration di workspace-intro ==== */
+.workspace-intro {
+  position: relative;
+  padding: 22px 0 0 12px;
+  min-width: 0;
+  overflow: hidden;   /* Biar dekorasi gak keluar */
+}
+
+.workspace-deco {
+  position: absolute;
+  top: 0;
+  right: -20px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.95;
+}
+
+/* Number besar di kanan atas */
+.workspace-deco-number {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-family: "Bangers", cursive;
+  font-size: 180px;
+  line-height: 0.8;
+  color: rgba(23, 27, 43, 0.06);
+  -webkit-text-stroke: 2px rgba(23, 27, 43, 0.12);
+  letter-spacing: -4px;
+  user-select: none;
+  animation: workspaceDecoFloat 6s ease-in-out infinite;
+}
+
+@keyframes workspaceDecoFloat {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-8px) rotate(0deg); }
+}
+
+/* Burst kuning dekoratif */
+.workspace-deco-burst {
+  position: absolute;
+  top: 30px;
+  right: 60px;
+  width: 120px;
+  height: 120px;
+  background: var(--yellow);
+  clip-path: polygon(50% 0%, 59% 19%, 78% 5%, 78% 28%, 100% 26%, 86% 46%, 100% 59%, 78% 66%, 87% 91%, 62% 82%, 50% 100%, 39% 81%, 15% 95%, 22% 69%, 0 59%, 16% 43%, 2% 23%, 27% 28%, 27% 7%, 43% 19%);
+  opacity: 0.4;
+  filter: drop-shadow(3px 3px 0 var(--ink));
+  animation: workspaceBurstRotate 20s linear infinite;
+}
+
+@keyframes workspaceBurstRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Sticker komik */
+.workspace-deco-sticker {
+  position: absolute;
+  top: 170px;
+  right: 20px;
+  font-family: "Bangers", cursive;
+  font-size: 16px;
+  letter-spacing: 1.2px;
+  background: var(--red);
+  color: #fff;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: rotate(-12deg);
+  white-space: nowrap;
+}
+
+/* Pastiin konten utama ada di atas dekorasi */
+.workspace-intro > *:not(.workspace-deco) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ==== Responsive ==== */
+@media (max-width: 900px) {
+  .workspace-deco-number { font-size: 140px; }
+  .workspace-deco-burst { width: 90px; height: 90px; right: 40px; }
+}
+
+@media (max-width: 620px) {
+  .workspace-intro {
+    padding: 5px 2px 0;
+  }
+  .workspace-deco {
+    right: -10px;
+  }
+  .workspace-deco-number {
+    font-size: 110px;
+    top: -10px;
+    -webkit-text-stroke: 1.5px rgba(23, 27, 43, 0.10);
+  }
+  .workspace-deco-burst {
+    width: 70px;
+    height: 70px;
+    right: 30px;
+    top: 20px;
+  }
+  .workspace-deco-sticker {
+    top: 110px;
+    right: 10px;
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+  .workspace-topline-right {
+    gap: 8px;
+  }
+  .workspace-status {
+    font-size: 8px;
+    padding: 5px 9px;
+  }
+}
+
 
 /* =========================================================
    IMAGE RESULT CARD
