@@ -1,0 +1,399 @@
+const express = require("express");
+const axios = require("axios");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const multer = require("multer");
+const FormData = require("form-data");
+const path = require("path");
+
+const app = express();
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
+
+app.use(express.json({ limit: "32kb" }));
+app.use("/api/", rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }));
+app.use(express.static(path.join(__dirname, "public"), { etag: true, maxAge: "1h" }));
+
+/* ============================================================
+   HTTP CLIENT
+   ============================================================ */
+const http = axios.create({
+  timeout: 60_000,
+  maxRedirects: 3,
+  maxContentLength: 12 * 1024 * 1024,
+  maxBodyLength: 12 * 1024 * 1024
+});
+
+/* ============================================================
+   MULTER — untuk upload file
+   ============================================================ */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Format file tidak didukung. Gunakan PNG, JPG, WEBP, atau GIF."));
+  }
+});
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function safeText(value, max = 180) {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, max);
+}
+
+function validatePublicHttpsUrl(raw) {
+  let u;
+  try { u = new URL(raw); } catch { throw new Error("URL tidak valid."); }
+  if (u.protocol !== "https:") throw new Error("Gunakan URL HTTPS yang aman.");
+  if (u.username || u.password) throw new Error("URL dengan username/password tidak diizinkan.");
+  const host = u.hostname.toLowerCase();
+  if (
+    !host ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    host === "0.0.0.0"
+  ) {
+    throw new Error("URL menuju host privat/lokal tidak diizinkan.");
+  }
+  return u.toString();
+}
+
+function sendError(res, err) {
+  const msg = String(err?.message || "Permintaan gagal.");
+  res.status(400).json({ ok: false, error: msg.slice(0, 180) });
+}
+
+function requireSecret(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Tool ini belum dikonfigurasi oleh owner (${name}).`);
+  return value;
+}
+
+function requireImageResponse(response) {
+  const type = String(response.headers["content-type"] || "").toLowerCase();
+  if (!type.startsWith("image/")) throw new Error("API tidak mengembalikan file gambar yang valid.");
+  const buf = Buffer.from(response.data);
+  if (!buf.length || buf.length > 12 * 1024 * 1024) throw new Error("Ukuran hasil gambar tidak valid atau terlalu besar.");
+  return buf;
+}
+
+async function uploadImageToCdn(buffer, filename = "image.jpg") {
+  const form = new FormData();
+  form.append("file", buffer, { filename, contentType: "image/jpeg" });
+
+  const res = await http.post(
+    "https://cdnn.ikyyxd.my.id/api/upload.php",
+    form,
+    {
+      headers: form.getHeaders(),
+      timeout: 60_000,
+      maxBodyLength: 12 * 1024 * 1024
+    }
+  );
+
+  const cdnUrl = res.data?.url || res.data?.result?.url || res.data?.file;
+  if (typeof cdnUrl !== "string" || !/^https?:\/\//i.test(cdnUrl)) {
+    throw new Error("Gagal menyiapkan gambar (CDN tidak mengembalikan URL).");
+  }
+  return cdnUrl;
+}
+
+/* ============================================================
+   HEALTH & CONFIG
+   ============================================================ */
+app.get("/api/health", (_req, res) =>
+  res.json({ ok: true, name: "Xavrels MultiTools", status: "online" })
+);
+
+app.get("/api/config", (_req, res) => {
+  const candidate = process.env.TELEGRAM_BOT_URL || "";
+  let telegramBotUrl = "";
+  try {
+    const u = new URL(candidate);
+    if (u.protocol === "https:" && u.hostname === "t.me") telegramBotUrl = u.toString();
+  } catch {}
+  res.set("Cache-Control", "no-store").json({ telegramBotUrl });
+});
+
+/* ============================================================
+   /api/hd
+   ============================================================ */
+app.post("/api/hd", upload.single("image"), async (req, res) => {
+  try {
+    let imageUrl;
+
+    if (req.file) {
+      console.log(`📤 [HD] Upload file: ${req.file.originalname} (${req.file.size} bytes)`);
+      imageUrl = await uploadImageToCdn(req.file.buffer, req.file.originalname || "upload.jpg");
+      imageUrl = validatePublicHttpsUrl(imageUrl);
+      console.log(`📤 [HD] CDN URL: ${imageUrl}`);
+    } else if (req.body?.url) {
+      imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      console.log(`📤 [HD] Input URL: ${imageUrl}`);
+    } else {
+      throw new Error("Kirim url atau file image.");
+    }
+
+    const apiUrl = "https://api.nexadev.my.id/api/upscale/";
+    const response = await http.get(apiUrl, {
+      params: { url: imageUrl },
+      responseType: "arraybuffer",
+      headers: { Accept: "image/*" }
+    });
+
+    const buf = requireImageResponse(response);
+    res.set("Content-Type", response.headers["content-type"] || "image/jpeg");
+    res.set("Cache-Control", "no-store");
+    res.set("Content-Disposition", 'inline; filename="xavrels-hd.jpg"');
+    res.send(buf);
+  } catch (err) {
+    console.error("❌ [/api/hd]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/remove-bg — TANPA SHARP
+   ============================================================ */
+app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
+  try {
+    let input;
+
+    if (req.file) {
+      console.log(`📤 [RMBG] Upload file: ${req.file.originalname} (${req.file.size} bytes)`);
+      input = req.file.buffer;
+    } else if (req.body?.url) {
+      const imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      const inputResponse = await http.get(imageUrl, {
+        responseType: "arraybuffer",
+        headers: { Accept: "image/*" }
+      });
+      const inputType = String(inputResponse.headers["content-type"] || "").toLowerCase();
+      if (!inputType.startsWith("image/")) throw new Error("URL harus mengarah langsung ke file gambar.");
+      input = Buffer.from(inputResponse.data);
+    } else {
+      throw new Error("Kirim url atau file image.");
+    }
+
+    if (!input.length || input.length > 10 * 1024 * 1024) {
+      throw new Error("Gambar maksimal 10 MB.");
+    }
+
+    // Upload langsung ke CDN tanpa normalize (DreamAI handle format)
+    const cdnUrl = await uploadImageToCdn(input, "upload.jpg");
+    console.log(`📤 [RMBG] CDN URL: ${cdnUrl}`);
+
+    const result = await http.post(
+      "https://www.dreamai.art/api/background-remover",
+      { images: [cdnUrl] },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Device-Id": require("crypto").randomUUID()
+        },
+        timeout: 120_000
+      }
+    );
+
+    const outUrl = result.data?.processedImage;
+    if (result.data?.success !== true || typeof outUrl !== "string") {
+      throw new Error("Provider Remove BG gagal memproses gambar.");
+    }
+
+    const outResponse = await http.get(validatePublicHttpsUrl(outUrl), {
+      responseType: "arraybuffer",
+      headers: { Accept: "image/*" }
+    });
+
+    const output = requireImageResponse(outResponse);
+    res.set("Content-Type", "image/png");
+    res.set("Content-Disposition", 'inline; filename="xavrels-remove-bg.png"');
+    res.set("Cache-Control", "no-store");
+    res.send(output);
+  } catch (err) {
+    console.error("❌ [/api/remove-bg]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/pinterest
+   ============================================================ */
+app.post("/api/pinterest", async (req, res) => {
+  try {
+    const q = safeText(req.body?.query, 100);
+    if (q.length < 2) throw new Error("Masukkan keyword minimal 2 karakter.");
+
+    const response = await http.get("https://api.ikyyxd.my.id/search/pinterest", {
+      params: { apikey: "kyzz", q },
+      timeout: 25_000
+    });
+
+    if (response.data?.status !== true) throw new Error("Pencarian Pinterest gagal.");
+
+    const seen = new Set();
+    const results = (Array.isArray(response.data.results) ? response.data.results : [])
+      .filter(x => typeof x?.image_url === "string" && /^https:\/\/[^ ]+/i.test(x.image_url))
+      .filter(x => {
+        if (seen.has(x.image_url)) return false;
+        seen.add(x.image_url);
+        return true;
+      })
+      .slice(0, 12)
+      .map(x => ({
+        image_url: x.image_url,
+        title: safeText(x.title, 120) || "Pinterest image",
+        source: safeText(x.source, 80)
+      }));
+
+    res.json({ ok: true, results });
+  } catch (err) {
+    console.error("❌ [/api/pinterest]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/spotify
+   ============================================================ */
+app.post("/api/spotify", async (req, res) => {
+  try {
+    const q = safeText(req.body?.query, 120);
+    if (q.length < 2) throw new Error("Masukkan judul lagu atau artis.");
+
+    const response = await http.get(
+      "https://api.nexadev.my.id/api/spotifyplay",
+      { params: { q }, timeout: 30_000 }
+    );
+
+    const data = response.data;
+    if (!data?.status || !data?.result) throw new Error("Lagu tidak ditemukan.");
+
+    const r = data.result;
+    res.json({
+      ok: true,
+      result: {
+        title: safeText(r.title || r.name, 160),
+        artist: safeText(r.artist || r.author || r.channel, 120),
+        thumbnail: typeof r.thumbnail === "string" && r.thumbnail.startsWith("https://") ? r.thumbnail : "",
+        url: typeof r.url === "string" && r.url.startsWith("https://") ? r.url : "",
+        duration: safeText(String(r.duration || ""), 30),
+        source: safeText(r.source, 80)
+      }
+    });
+  } catch (err) {
+    console.error("❌ [/api/spotify]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/react
+   ============================================================ */
+app.post("/api/react", async (req, res) => {
+  try {
+    const url = validatePublicHttpsUrl(safeText(req.body?.url, 1000));
+    const emoji = safeText(req.body?.emoji, 80);
+
+    if (!/whatsapp\.com\/channel\//i.test(new URL(url).hostname + new URL(url).pathname)) {
+      throw new Error("URL harus berupa link postingan/channel WhatsApp.");
+    }
+    if (!emoji || emoji.length > 60) {
+      throw new Error("Isi emoji reaksi, contoh ❤️,🔥,😂.");
+    }
+
+    const apiKey = requireSecret("REACT_API_KEY");
+    const response = await http.get(
+      "https://auto-reaction.zxcoderid.web.id/api/vip/open-api/react",
+      {
+        params: { api_key: apiKey, url, reaction: emoji },
+        timeout: 45_000,
+        headers: { "User-Agent": "Mozilla/5.0" }
+      }
+    );
+
+    const d = response.data;
+    if (!d?.success) {
+      const detail = safeText(
+        d?.error?.message || d?.message || "Provider ZxcoderID menolak permintaan.",
+        180
+      );
+      throw new Error(detail);
+    }
+
+    res.json({
+      ok: true,
+      message: "Permintaan reaksi dikirim ke provider.",
+      result: d?.message ? safeText(d.message, 160) : "Selesai"
+    });
+  } catch (err) {
+    console.error("❌ [/api/react]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   FALLBACK — SPA routing
+   ============================================================ */
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ ok: false, error: "Endpoint tidak ditemukan." });
+  }
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+/* ============================================================
+   ERROR HANDLER
+   ============================================================ */
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ ok: false, error: "File terlalu besar. Maksimal 10 MB." });
+    }
+    return res.status(400).json({ ok: false, error: `Upload error: ${err.message}` });
+  }
+  if (err) {
+    console.error("❌ [Global Error]", err.message);
+    return res.status(400).json({ ok: false, error: String(err.message || "Terjadi kesalahan.").slice(0, 180) });
+  }
+  next();
+});
+
+/* ============================================================
+   EXPORT & LISTEN
+   ============================================================ */
+module.exports = app;
+
+if (require.main === module) {
+  const port = Number(process.env.PORT || 3000);
+  app.listen(port, "0.0.0.0", () =>
+    console.log(`Xavrels MultiTools running on http://0.0.0.0:${port}`)
+  );
+}
