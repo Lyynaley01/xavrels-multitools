@@ -73,7 +73,7 @@
           </div>
 
           <div class="hero-stats">
-            <div><strong>06</strong><small>ACTIVE TOOLS</small></div>
+            <div><strong id="totalToolsCount">12</strong><small>ACTIVE TOOLS</small></div>
             <i></i>
             <div><strong>∞</strong><small>CREATIVE MODE</small></div>
             <i></i>
@@ -86,8 +86,8 @@
           <div class="comic-caption">POWER<br>UP!</div>
 
           <div class="hero-orb hero-orb-image">
-  <img src="spider-logo.jpg" alt="Spider-hero mascot" draggable="false">
-</div>
+            <img src="spider-logo.jpg" alt="Spider-hero mascot" draggable="false">
+          </div>
 
           <div class="speed speed-one"></div>
           <div class="speed speed-two"></div>
@@ -114,7 +114,7 @@
       </section>
 
 
-      <!-- ---------- TOOL CARDS ---------- -->
+      <!-- ---------- TOOL CARDS (URUT 01 → 12) ---------- -->
       <section class="tool-grid" id="toolGrid">
 
         <!-- 01 · HD IMAGE -->
@@ -188,66 +188,6 @@
           <p>Cari preset Alight Motion dari link video TikTok.</p>
           <button class="tool-btn" data-open="fpreset" type="button">OPEN TOOL <span>↗</span></button>
         </article>
-        
-        <!-- 08 · RANDOM CECAN -->
-<article class="tool-card pink" data-tool="random-cecan">
-  <div class="card-top">
-    <span class="tool-icon">🌸</span>
-    <span class="issue">08 / FUN</span>
-  </div>
-  <div class="card-art art-cecan"><span>JP</span><b>GACHA!</b><i>✦</i></div>
-  <h3>RANDOM CECAN</h3>
-  <p>Gacha foto cewek cantik dari berbagai negara.</p>
-  <button class="tool-btn" data-open="random-cecan" type="button">OPEN TOOL <span>↗</span></button>
-</article>
-
-<!-- 09 · GEN LOBBY FF -->
-<article class="tool-card blue" data-tool="gen-lobby-ff">
-  <div class="card-top">
-    <span class="tool-icon">🎮</span>
-    <span class="issue">09 / FUN</span>
-  </div>
-  <div class="card-art art-ff"><span>FF</span><b>SOLO!</b><i>✦</i></div>
-  <h3>GEN LOBBY FF</h3>
-  <p>Generate kartu profil Free Fire solo dari nickname.</p>
-  <button class="tool-btn" data-open="gen-lobby-ff" type="button">OPEN TOOL <span>↗</span></button>
-</article>
-
-<!-- 10 · GEN DUO FF -->
-<article class="tool-card pink" data-tool="gen-duo-ff">
-  <div class="card-top">
-    <span class="tool-icon">🎮</span>
-    <span class="issue">10 / FUN</span>
-  </div>
-  <div class="card-art art-ffduo"><span>FF</span><b>DUO!</b><i>✦</i></div>
-  <h3>GEN DUO FF</h3>
-  <p>Generate kartu profil Free Fire duo dari 2 nickname.</p>
-  <button class="tool-btn" data-open="gen-duo-ff" type="button">OPEN TOOL <span>↗</span></button>
-</article>
-
-<!-- 10 · BRAT VID -->
-<article class="tool-card dark" data-tool="brat-vid">
-  <div class="card-top">
-    <span class="tool-icon">🎬</span>
-    <span class="issue">11 / FUN</span>
-  </div>
-  <div class="card-art art-bratvid"><span>BRAT</span><b>MOVE!</b><i>✦</i></div>
-  <h3>BRAT VID</h3>
-  <p>Generate video teks Brat bergerak dari teks kamu.</p>
-  <button class="tool-btn" data-open="brat-vid" type="button">OPEN TOOL <span>↗</span></button>
-</article>
-
-<!-- 11 · GEN DANA -->
-<article class="tool-card blue" data-tool="gen-dana">
-  <div class="card-top">
-    <span class="tool-icon">💳</span>
-    <span class="issue">12 / FUN</span>
-  </div>
-  <div class="card-art art-dana"><span>DANA</span><b>SULTAN!</b><i>✦</i></div>
-  <h3>GEN DANA</h3>
-  <p>Generate gambar saldo Dana sesuai nominal yang diisi.</p>
-  <button class="tool-btn" data-open="gen-dana" type="button">OPEN TOOL <span>↗</span></button>
-</article>
 
         <!-- 07 · AMPREM V2 -->
         <article class="tool-card dark" data-tool="amprem">
@@ -263,18 +203,78 @@
           </a>
         </article>
 
+        <!-- 08 · RANDOM CECAN -->
+        <article class="tool-card pink" data-tool="random-cecan">
+          <div class="card-top">
+            <span class="tool-icon">🌸</span>
+            <span class="issue">08 / FUN</span>
+          </div>
+          <div class="card-art art-cecan"><span>JP</span><b>GACHA!</b><i>✦</i></div>
+          <h3>RANDOM CECAN</h3>
+          <p>Gacha foto cewek cantik dari berbagai negara.</p>
+          <button class="tool-btn" data-open="random-cecan" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <!-- 09 · GEN LOBBY FF -->
+        <article class="tool-card blue" data-tool="gen-lobby-ff">
+          <div class="card-top">
+            <span class="tool-icon">🎮</span>
+            <span class="issue">09 / FUN</span>
+          </div>
+          <div class="card-art art-ff"><span>FF</span><b>SOLO!</b><i>✦</i></div>
+          <h3>GEN LOBBY FF</h3>
+          <p>Generate kartu profil Free Fire solo dari nickname.</p>
+          <button class="tool-btn" data-open="gen-lobby-ff" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <!-- 10 · GEN DUO FF -->
+        <article class="tool-card pink" data-tool="gen-duo-ff">
+          <div class="card-top">
+            <span class="tool-icon">🎮</span>
+            <span class="issue">10 / FUN</span>
+          </div>
+          <div class="card-art art-ffduo"><span>FF</span><b>DUO!</b><i>✦</i></div>
+          <h3>GEN DUO FF</h3>
+          <p>Generate kartu profil Free Fire duo dari 2 nickname.</p>
+          <button class="tool-btn" data-open="gen-duo-ff" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <!-- 11 · BRAT VID -->
+        <article class="tool-card dark" data-tool="brat-vid">
+          <div class="card-top">
+            <span class="tool-icon">🎬</span>
+            <span class="issue">11 / FUN</span>
+          </div>
+          <div class="card-art art-bratvid"><span>BRAT</span><b>MOVE!</b><i>✦</i></div>
+          <h3>BRAT VID</h3>
+          <p>Generate video teks Brat bergerak dari teks kamu.</p>
+          <button class="tool-btn" data-open="brat-vid" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <!-- 12 · GEN DANA -->
+        <article class="tool-card blue" data-tool="gen-dana">
+          <div class="card-top">
+            <span class="tool-icon">💳</span>
+            <span class="issue">12 / FUN</span>
+          </div>
+          <div class="card-art art-dana"><span>DANA</span><b>SULTAN!</b><i>✦</i></div>
+          <h3>GEN DANA</h3>
+          <p>Generate gambar saldo Dana sesuai nominal yang diisi.</p>
+          <button class="tool-btn" data-open="gen-dana" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
       </section>
 
       <div class="empty-state" id="emptyState" hidden>
-  <div class="empty-state-icon">🕸️</div>
-  <div class="empty-state-content">
-    <strong>TOOL TIDAK DITEMUKAN</strong>
-    <p>Coba keyword lain atau jelajahi semua tool yang tersedia.</p>
-  </div>
-  <button class="empty-state-btn" id="emptyStateReset" type="button">
-    <span>↺</span> RESET PENCARIAN
-  </button>
-</div>
+        <div class="empty-state-icon">🕸️</div>
+        <div class="empty-state-content">
+          <strong>TOOL TIDAK DITEMUKAN</strong>
+          <p>Coba keyword lain atau jelajahi semua tool yang tersedia.</p>
+        </div>
+        <button class="empty-state-btn" id="emptyStateReset" type="button">
+          <span>↺</span> RESET PENCARIAN
+        </button>
+      </div>
 
 
       <!-- ---------- SECURITY STRIP ---------- -->
@@ -311,36 +311,36 @@
 
       <!-- Topline: Back + Edition -->
       <div class="workspace-topline">
-  <button class="back-btn" id="backHome" type="button">
-    <span>←</span> ALL TOOLS
-  </button>
-  <div class="workspace-topline-right">
-    <span class="workspace-edition">
-      XAVRELS LABS / <b id="workspaceIssue">TOOL 01</b>
-    </span>
-    <span class="workspace-status">
-      <span class="status-dot"></span> ONLINE
-    </span>
-  </div>
-</div>
+        <button class="back-btn" id="backHome" type="button">
+          <span>←</span> ALL TOOLS
+        </button>
+        <div class="workspace-topline-right">
+          <span class="workspace-edition">
+            XAVRELS LABS / <b id="workspaceIssue">TOOL 01</b>
+          </span>
+          <span class="workspace-status">
+            <span class="status-dot"></span> ONLINE
+          </span>
+        </div>
+      </div>
 
       <div class="workspace-layout">
 
         <!-- ---------- TOOL INFO (LEFT) ---------- -->
-<section class="workspace-intro">
-  <!-- Dekorasi background -->
-  <div class="workspace-deco">
-    <div class="workspace-deco-number" id="workspaceDecoNumber">01</div>
-    <div class="workspace-deco-burst"></div>
-    <div class="workspace-deco-sticker">LET'S GO!</div>
-  </div>
+        <section class="workspace-intro">
+          <!-- Dekorasi background -->
+          <div class="workspace-deco">
+            <div class="workspace-deco-number" id="workspaceDecoNumber">01</div>
+            <div class="workspace-deco-burst"></div>
+            <div class="workspace-deco-sticker">LET'S GO!</div>
+          </div>
 
-  <div class="workspace-icon" id="workspaceIcon">▧</div>
-  <p class="kicker" id="workspaceCategory">IMAGE LAB</p>
-  <h1 class="workspace-title" id="workspaceTitle">HD <span>IMAGE</span></h1>
-  <p class="workspace-description" id="workspaceDescription">
-    Tingkatkan resolusi gambar dengan proses upscale.
-  </p>
+          <div class="workspace-icon" id="workspaceIcon">▧</div>
+          <p class="kicker" id="workspaceCategory">IMAGE LAB</p>
+          <h1 class="workspace-title" id="workspaceTitle">HD <span>IMAGE</span></h1>
+          <p class="workspace-description" id="workspaceDescription">
+            Tingkatkan resolusi gambar dengan proses upscale.
+          </p>
 
           <div class="workspace-tip">
             <span>✦</span>
@@ -370,15 +370,14 @@
           <form id="toolForm" class="workspace-form">
 
             <!-- Input Mode Tabs (URL / Upload) -->
-<!-- Input Mode Tabs (URL / Upload) -->
-<div class="input-tabs" id="inputTabs" hidden>
-  <button type="button" class="input-tab active" data-mode="url">
-    <span class="tab-icon">🔗</span> <span class="tab-text">PAKAI LINK</span>
-  </button>
-  <button type="button" class="input-tab" data-mode="upload">
-    <span class="tab-icon">📁</span> <span class="tab-text">UPLOAD FILE</span>
-  </button>
-</div>
+            <div class="input-tabs" id="inputTabs" hidden>
+              <button type="button" class="input-tab active" data-mode="url">
+                <span class="tab-icon">🔗</span> <span class="tab-text">PAKAI LINK</span>
+              </button>
+              <button type="button" class="input-tab" data-mode="upload">
+                <span class="tab-icon">📁</span> <span class="tab-text">UPLOAD FILE</span>
+              </button>
+            </div>
 
             <!-- Mode: URL -->
             <div class="input-mode" id="modeUrl">

@@ -145,7 +145,7 @@ const toolInfo = {
     endpoint: "api/spotify", button: "FIND MUSIC",
     supportsUpload: false
   },
-    fpreset: {
+  fpreset: {
     title: "AM PRESET FINDER", titleLead: "AM PRESET", titleAccent: "FINDER", issue: "TOOL 06", number: "06",
     category: "PRESET LAB", icon: "🎬",
     description: "Cari preset Alight Motion dari link TikTok atau keyword.",
@@ -157,55 +157,55 @@ const toolInfo = {
     supportsModeSwitch: true
   },
   "random-cecan": {
-  title: "RANDOM CECAN", titleLead: "RANDOM", titleAccent: "CECAN", issue: "TOOL 07", number: "07",
-  category: "FUN LAB", icon: "🌸",
-  description: "Gacha foto cewek cantik dari berbagai negara secara random.",
-  tip: "Pilih negara dulu, lalu klik GACHA untuk dapat foto random.",
-  label: "Pilih negara", placeholder: "", inputType: "text",
-  endpoint: "api/random-cecan", button: "GACHA FOTO",
-  supportsUpload: false,
-  isCustomTool: "random-cecan"
-},
-"gen-lobby-ff": {
-  title: "GEN LOBBY FF", titleLead: "GEN LOBBY", titleAccent: "FF", issue: "TOOL 08", number: "08",
-  category: "FUN LAB", icon: "🎮",
-  description: "Generate kartu profil Free Fire solo dari nickname.",
-  tip: "Masukkan nickname Free Fire, klik GENERATE, hasilnya kartu profil keren.",
-  label: "Nickname Free Fire", placeholder: "contoh: Xavrels", inputType: "text",
-  endpoint: "api/gen-lobby-ff", button: "GENERATE PROFILE",
-  supportsUpload: false,
-  isCustomTool: "gen-lobby-ff"
-},
-"gen-duo-ff": {
-  title: "GEN DUO FF", titleLead: "GEN DUO", titleAccent: "FF", issue: "TOOL 09", number: "09",
-  category: "FUN LAB", icon: "🎮",
-  description: "Generate kartu profil Free Fire duo dari 2 nickname sekaligus.",
-  tip: "Masukkan 2 nickname, klik GENERATE untuk hasil kartu duo.",
-  label: "Nickname 1 & 2", placeholder: "", inputType: "text",
-  endpoint: "api/gen-duo-ff", button: "GENERATE DUO",
-  supportsUpload: false,
-  isCustomTool: "gen-duo-ff"
-},
-"brat-vid": {
-  title: "BRAT VID", titleLead: "BRAT", titleAccent: "VID", issue: "TOOL 10", number: "10",
-  category: "FUN LAB", icon: "🎬",
-  description: "Generate video teks Brat bergerak dari text yang kamu masukkan.",
-  tip: "Masukkan teks, klik GENERATE, video Brat akan dibuat otomatis.",
-  label: "Teks Brat", placeholder: "contoh: Xavrels ganteng", inputType: "text",
-  endpoint: "api/brat-vid", button: "GENERATE VIDEO",
-  supportsUpload: false,
-  isCustomTool: "brat-vid"
-},
-"gen-dana": {
-  title: "GEN DANA", titleLead: "GEN", titleAccent: "DANA", issue: "TOOL 11", number: "11",
-  category: "FUN LAB", icon: "💳",
-  description: "Generate gambar saldo Dana palsu sesuai nominal yang kamu masukkan.",
-  tip: "Masukkan nominal saldo, klik GENERATE, gambar Dana siap di-download.",
-  label: "Nominal saldo (Rp)", placeholder: "contoh: 56000", inputType: "text",
-  endpoint: "api/gen-dana", button: "GENERATE GAMBAR",
-  supportsUpload: false,
-  isCustomTool: "gen-dana"
-}
+    title: "RANDOM CECAN", titleLead: "RANDOM", titleAccent: "CECAN", issue: "TOOL 08", number: "08",
+    category: "FUN LAB", icon: "🌸",
+    description: "Gacha foto cewek cantik dari berbagai negara secara random.",
+    tip: "Pilih negara dulu, lalu klik GACHA untuk dapat foto random.",
+    label: "Pilih negara", placeholder: "", inputType: "text",
+    endpoint: "api/random-cecan", button: "GACHA FOTO",
+    supportsUpload: false,
+    isCustomTool: "random-cecan"
+  },
+  "gen-lobby-ff": {
+    title: "GEN LOBBY FF", titleLead: "GEN LOBBY", titleAccent: "FF", issue: "TOOL 09", number: "09",
+    category: "FUN LAB", icon: "🎮",
+    description: "Generate kartu profil Free Fire solo dari nickname.",
+    tip: "Masukkan nickname Free Fire, klik GENERATE, hasilnya kartu profil keren.",
+    label: "Nickname Free Fire", placeholder: "contoh: Xavrels", inputType: "text",
+    endpoint: "api/gen-lobby-ff", button: "GENERATE PROFILE",
+    supportsUpload: false,
+    isCustomTool: "gen-lobby-ff"
+  },
+  "gen-duo-ff": {
+    title: "GEN DUO FF", titleLead: "GEN DUO", titleAccent: "FF", issue: "TOOL 10", number: "10",
+    category: "FUN LAB", icon: "🎮",
+    description: "Generate kartu profil Free Fire duo dari 2 nickname sekaligus.",
+    tip: "Masukkan 2 nickname, klik GENERATE untuk hasil kartu duo.",
+    label: "Nickname 1 & 2", placeholder: "", inputType: "text",
+    endpoint: "api/gen-duo-ff", button: "GENERATE DUO",
+    supportsUpload: false,
+    isCustomTool: "gen-duo-ff"
+  },
+  "brat-vid": {
+    title: "BRAT VID", titleLead: "BRAT", titleAccent: "VID", issue: "TOOL 11", number: "11",
+    category: "FUN LAB", icon: "🎬",
+    description: "Generate video teks Brat bergerak dari text yang kamu masukkan.",
+    tip: "Masukkan teks, klik GENERATE, video Brat akan dibuat otomatis.",
+    label: "Teks Brat", placeholder: "contoh: Xavrels ganteng", inputType: "text",
+    endpoint: "api/brat-vid", button: "GENERATE VIDEO",
+    supportsUpload: false,
+    isCustomTool: "brat-vid"
+  },
+  "gen-dana": {
+    title: "GEN DANA", titleLead: "GEN", titleAccent: "DANA", issue: "TOOL 12", number: "12",
+    category: "FUN LAB", icon: "💳",
+    description: "Generate gambar saldo Dana palsu sesuai nominal yang kamu masukkan.",
+    tip: "Masukkan nominal saldo, klik GENERATE, gambar Dana siap di-download.",
+    label: "Nominal saldo (Rp)", placeholder: "contoh: 56000", inputType: "text",
+    endpoint: "api/gen-dana", button: "GENERATE GAMBAR",
+    supportsUpload: false,
+    isCustomTool: "gen-dana"
+  }
 };
 
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
@@ -2545,7 +2545,6 @@ function openTool(key, updateHistory = true) {
     if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
-  }
   
   // ═══════════════════════════════════════════════
 // SPECIAL TOOL: BRAT VID
@@ -3415,6 +3414,60 @@ async function runGenDanaGenerate(btnEl) {
   }
 }
 
+/* =========================================================
+   AUTO-COUNT & AUTO-NUMBERING TOOLS
+   =========================================================
+   Hitung total tool cards di DOM, update hero stats,
+   & auto-fix nomor issue di tiap card berdasarkan urutan DOM.
+   ========================================================= */
+function autoCountAndNumberTools() {
+  const cards = document.querySelectorAll(".tool-grid .tool-card");
+  const total = cards.length;
+
+  // ── Update hero stats: total active tools ──
+  const totalEl = document.getElementById("totalToolsCount");
+  if (totalEl) {
+    totalEl.textContent = String(total).padStart(2, "0");
+    console.log(`[XAVRELS] Total tools terdeteksi: ${total}`);
+  }
+
+  // ── Auto-fix nomor urut di tiap card (issue label) ──
+  cards.forEach((card, index) => {
+    const num = String(index + 1).padStart(2, "0");
+    const issueEl = card.querySelector(".issue");
+    if (!issueEl) return;
+
+    // Ambil suffix kategori (setelah "/"), misal "IMAGE", "SOCIAL", "FUN"
+    const currentText = issueEl.textContent.trim();
+    const match = currentText.match(/^(\d+)\s*\/\s*(.+)$/);
+    const category = match ? match[2].trim() : currentText;
+
+    // Set ulang: "01 / IMAGE", dst.
+    issueEl.textContent = `${num} / ${category}`;
+  });
+
+  // ── Auto-fix nomor di toolInfo (biar konsisten sama DOM) ──
+  const orderedKeys = Array.from(cards)
+    .map(c => c.dataset.tool)
+    .filter(k => k && k !== "amprem"); // skip amprem (bukan tool internal)
+
+  orderedKeys.forEach((key, i) => {
+    if (toolInfo[key]) {
+      const num = String(i + 1).padStart(2, "0");
+      toolInfo[key].number = num;
+      toolInfo[key].issue = `TOOL ${num}`;
+    }
+  });
+
+  console.log("[XAVRELS] Auto-numbering selesai. Order:", orderedKeys.join(", "));
+}
+
+// Jalankan setelah DOM ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", autoCountAndNumberTools);
+} else {
+  autoCountAndNumberTools();
+}
 
 /* ===== Start ===== */
 syncRoute();
