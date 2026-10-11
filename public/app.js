@@ -1,8 +1,8 @@
 /* =========================================================
-   XAVRELS MULTITOOLS — Main Script (FINAL + BEFORE/AFTER MODAL)
+   XAVRELS MULTITOOLS — Main Script (FINAL + SESSION)
    ========================================================= */
 
-/* ===== Block Zoom (HP & Desktop) ===== */
+/* ===== Block Zoom ===== */
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
@@ -22,6 +22,58 @@ document.addEventListener('keydown', (e) => {
 /* ===== Helpers ===== */
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
+
+
+/* =========================================================
+   SESSION TOKEN — auto-fetch, auto-refresh
+   ========================================================= */
+let sessionToken = null;
+let sessionExpiresAt = 0;
+let sessionPromise = null;
+
+async function ensureSession() {
+  const now = Date.now();
+
+  // Masih valid? pakai yang lama
+  if (sessionToken && sessionExpiresAt > now + 30_000) {
+    return sessionToken;
+  }
+
+  // Cegah request paralel — pakai promise yang sama
+  if (sessionPromise) return sessionPromise;
+
+  sessionPromise = (async () => {
+    try {
+      const res = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Accept": "application/json" }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.ok || !data.token) throw new Error("Token tidak valid");
+
+      sessionToken = data.token;
+      sessionExpiresAt = now + (data.expiresIn || 600) * 1000;
+      console.log("[SESSION] Token refreshed, expired at", new Date(sessionExpiresAt).toLocaleTimeString());
+      return sessionToken;
+    } catch (err) {
+      console.error("[SESSION] Gagal ambil token:", err.message);
+      throw err;
+    } finally {
+      sessionPromise = null;
+    }
+  })();
+
+  return sessionPromise;
+}
+
+// Pre-fetch saat page load
+ensureSession().catch(() => {});
+
+// Refresh otomatis tiap 8 menit (sebelum expired 10 menit)
+setInterval(() => {
+  ensureSession().catch(() => {});
+}, 8 * 60 * 1000);
 
 
 /* ===== Element cache ===== */
@@ -292,7 +344,7 @@ function showMessage(message, type = "") {
 
 
 /* =========================================================
-   RENDER IMAGE RESULT — Preview + tombol aksi
+   RENDER IMAGE RESULT
    ========================================================= */
 function renderImageResult(response) {
   return response.blob().then(blob => {
@@ -300,7 +352,6 @@ function renderImageResult(response) {
     resultShell.hidden = false;
     resultArea.replaceChildren();
 
-    // Simpan URL "before" — dari file upload atau URL yang di-input user
     activeBeforeUrl = null;
     if (activeTool === "hd" || activeTool === "remove-bg") {
       if (selectedFile) {
@@ -315,7 +366,6 @@ function renderImageResult(response) {
     const card = document.createElement("article");
     card.className = "image-result-card";
 
-    // ===== Preview gambar =====
     const preview = document.createElement("div");
     preview.className = "image-preview-stage";
 
@@ -325,7 +375,6 @@ function renderImageResult(response) {
     image.src = activeObjectUrl;
     preview.append(image);
 
-    // Klik preview → buka modal (kalau bisa)
     if (canShowBeforeAfter) {
       preview.classList.add("is-clickable");
       preview.addEventListener("click", () => {
@@ -337,7 +386,6 @@ function renderImageResult(response) {
       });
     }
 
-    // ===== Meta + tombol aksi =====
     const meta = document.createElement("div");
     meta.className = "image-result-meta";
 
@@ -348,7 +396,6 @@ function renderImageResult(response) {
     const actions = document.createElement("div");
     actions.className = "image-result-actions";
 
-    // Tombol "BEFORE / AFTER" — hanya kalau bisa
     if (canShowBeforeAfter) {
       const baBtn = document.createElement("button");
       baBtn.type = "button";
@@ -364,7 +411,6 @@ function renderImageResult(response) {
       actions.append(baBtn);
     }
 
-    // Tombol download
     const download = document.createElement("a");
     download.className = "download-btn";
     download.href = activeObjectUrl;
@@ -383,10 +429,9 @@ function renderImageResult(response) {
 
 
 /* =========================================================
-   BEFORE / AFTER MODAL SLIDER
+   BEFORE / AFTER MODAL
    ========================================================= */
 function openBeforeAfterModal({ title, beforeUrl, afterUrl }) {
-  // Hapus modal lama kalau ada
   const old = document.getElementById("baModal");
   if (old) old.remove();
 
@@ -740,7 +785,7 @@ if (searchInput) {
 
 
 /* =========================================================
-   SUBMIT FORM
+   SUBMIT FORM (dengan session token)
    ========================================================= */
 if (form) {
   form.addEventListener("submit", async event => {
@@ -749,18 +794,16 @@ if (form) {
     if (!info) return;
 
     let fetchOptions;
+    const isUploadMode = info.supportsUpload && inputMode === "upload";
 
-    if (info.supportsUpload && inputMode === "upload") {
+    if (isUploadMode) {
       if (!selectedFile) {
         showMessage("Pilih file gambar dulu, atau switch ke mode URL.", "error");
         return;
       }
       const fd = new FormData();
       fd.append("image", selectedFile, selectedFile.name);
-      fetchOptions = {
-        method: "POST",
-        body: fd
-      };
+      fetchOptions = { method: "POST", body: fd };
     } else {
       const value = input.value.trim();
       if (!value) return;
@@ -782,8 +825,28 @@ if (form) {
     showMessage("Sedang menghubungi provider dengan aman. Tunggu sebentar…", "loading");
 
     try {
-      const response = await fetch(info.endpoint, fetchOptions);
+      // ==== Ambil session token ====
+      const token = await ensureSession();
+
+      // ==== Tambah header ke fetchOptions ====
+      if (!fetchOptions.headers) fetchOptions.headers = {};
+      fetchOptions.headers["X-Session-Token"] = token;
+
+      // ==== Kirim request ====
+      let response = await fetch(info.endpoint, fetchOptions);
+
+      // ==== Kalau 401 (token expired/invalid), refresh & retry sekali ====
+      if (response.status === 401) {
+        console.warn("[SESSION] 401 — refresh token & retry");
+        sessionToken = null;
+        sessionExpiresAt = 0;
+        const newToken = await ensureSession();
+        fetchOptions.headers["X-Session-Token"] = newToken;
+        response = await fetch(info.endpoint, fetchOptions);
+      }
+
       const contentType = response.headers.get("content-type") || "";
+
       if (!response.ok) {
         let message = `Request gagal (HTTP ${response.status}).`;
         if (contentType.includes("application/json")) {
@@ -792,6 +855,7 @@ if (form) {
         }
         throw new Error(message);
       }
+
       if (contentType.startsWith("image/")) {
         await renderImageResult(response);
       } else {
