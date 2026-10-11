@@ -48,6 +48,8 @@ const http = axios.create({
   maxBodyLength: 12 * 1024 * 1024
 });
 
+const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 
 /* ============================================================
    MULTER
@@ -64,15 +66,15 @@ const upload = multer({
 
 
 /* ============================================================
-   SESSION TOKEN SYSTEM
+   AUTH SYSTEM — Session Token + Master API Key
    ============================================================ */
-const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || "";
-if (!INTERNAL_API_SECRET) {
-  console.warn("⚠️  INTERNAL_API_SECRET belum di-set. Session tetap jalan tapi kurang aman.");
+const MASTER_API_KEY = process.env.MASTER_API_KEY || "";
+if (!MASTER_API_KEY) {
+  console.warn("⚠️  MASTER_API_KEY belum di-set — akses private DIMATIKAN.");
 }
 
 const sessionStore = new Map();
-const SESSION_TTL_MS = 10 * 60 * 1000; // 10 menit
+const SESSION_TTL_MS = 10 * 60 * 1000;
 const SESSION_MAX_USES = 30;
 
 function pruneSessions() {
@@ -118,20 +120,49 @@ function validateSession(req) {
 }
 
 /**
- * Middleware — dipakai di endpoint yang butuh proteksi.
+ * Cek master API key — timing-safe compare
  */
-function requireSession(req, res, next) {
-  const result = validateSession(req);
-  if (!result.ok) {
-    return res.status(401).json({ ok: false, error: `Session invalid: ${result.reason}` });
+function validateMasterKey(req) {
+  if (!MASTER_API_KEY) return false;
+  const provided = req.headers["x-api-key"];
+  if (!provided || typeof provided !== "string") return false;
+  if (provided.length !== MASTER_API_KEY.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(MASTER_API_KEY));
+  } catch {
+    return false;
   }
-  req.session = result.session;
-  next();
+}
+
+/**
+ * Middleware utama — requireAuth
+ *
+ * Lolos kalau salah satu:
+ * 1. Punya MASTER_API_KEY valid di header X-API-Key (kamu pribadi)
+ * 2. Punya session token valid di header X-Session-Token (user web)
+ */
+function requireAuth(req, res, next) {
+  if (validateMasterKey(req)) {
+    req.authMode = "master";
+    return next();
+  }
+
+  const sessionResult = validateSession(req);
+  if (sessionResult.ok) {
+    req.authMode = "session";
+    req.session = sessionResult.session;
+    return next();
+  }
+
+  return res.status(401).json({
+    ok: false,
+    error: "Akses ditolak. Butuh API key atau session token yang valid."
+  });
 }
 
 
 /* ============================================================
-   /api/session — Bikin session token baru
+   /api/session — Bikin session token (dari web)
    ============================================================ */
 app.post("/api/session", (req, res) => {
   try {
@@ -155,7 +186,6 @@ app.post("/api/session", (req, res) => {
       return res.status(403).json({ ok: false, error: "Origin tidak diizinkan." });
     }
 
-    // Rate limit per IP — maks 10 session baru per menit
     const ip = req.ip || "unknown";
     const now = Date.now();
     const recentCount = Array.from(sessionStore.values())
@@ -274,7 +304,7 @@ app.get("/api/config", (_req, res) => {
 /* ============================================================
    /api/hd — PROTECTED
    ============================================================ */
-app.post("/api/hd", requireSession, upload.single("image"), async (req, res) => {
+app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
   try {
     let imageUrl;
 
@@ -294,7 +324,14 @@ app.post("/api/hd", requireSession, upload.single("image"), async (req, res) => 
     const response = await http.get(apiUrl, {
       params: { url: imageUrl },
       responseType: "arraybuffer",
-      headers: { Accept: "image/*" }
+      timeout: 60_000,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8",
+        "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://api.nexadev.my.id/",
+        "Origin": "https://api.nexadev.my.id"
+      }
     });
 
     const buf = requireImageResponse(response);
@@ -313,7 +350,7 @@ app.post("/api/hd", requireSession, upload.single("image"), async (req, res) => 
 /* ============================================================
    /api/remove-bg — PROTECTED
    ============================================================ */
-app.post("/api/remove-bg", requireSession, upload.single("image"), async (req, res) => {
+app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res) => {
   try {
     let input;
 
@@ -346,7 +383,10 @@ app.post("/api/remove-bg", requireSession, upload.single("image"), async (req, r
       {
         headers: {
           "Content-Type": "application/json",
-          "X-Device-Id": crypto.randomUUID()
+          "X-Device-Id": crypto.randomUUID(),
+          "User-Agent": BROWSER_UA,
+          "Origin": "https://www.dreamai.art",
+          "Referer": "https://www.dreamai.art/en/ai-background-remover"
         },
         timeout: 120_000
       }
@@ -378,14 +418,15 @@ app.post("/api/remove-bg", requireSession, upload.single("image"), async (req, r
 /* ============================================================
    /api/pinterest — PROTECTED
    ============================================================ */
-app.post("/api/pinterest", requireSession, async (req, res) => {
+app.post("/api/pinterest", requireAuth, async (req, res) => {
   try {
     const q = safeText(req.body?.query, 100);
     if (q.length < 2) throw new Error("Masukkan keyword minimal 2 karakter.");
 
     const response = await http.get("https://api.ikyyxd.my.id/search/pinterest", {
       params: { apikey: "kyzz", q },
-      timeout: 25_000
+      timeout: 30_000,
+      headers: { "User-Agent": BROWSER_UA }
     });
 
     if (response.data?.status !== true) throw new Error("Pencarian Pinterest gagal.");
@@ -415,31 +456,59 @@ app.post("/api/pinterest", requireSession, async (req, res) => {
 
 
 /* ============================================================
-   /api/spotify — PROTECTED
+   /api/spotify — PROTECTED — pakai provider ikyyxd (ytplayv3)
    ============================================================ */
-app.post("/api/spotify", requireSession, async (req, res) => {
+app.post("/api/spotify", requireAuth, async (req, res) => {
   try {
     const q = safeText(req.body?.query, 120);
     if (q.length < 2) throw new Error("Masukkan judul lagu atau artis.");
 
     const response = await http.get(
-      "https://api.nexadev.my.id/api/spotifyplay",
-      { params: { q }, timeout: 30_000 }
+      "https://api.ikyyxd.my.id/search/ytplayv3",
+      {
+        params: { q },
+        timeout: 60_000,
+        headers: {
+          "User-Agent": BROWSER_UA,
+          "Accept": "application/json, text/plain, */*"
+        }
+      }
     );
 
     const data = response.data;
     if (!data?.status || !data?.result) throw new Error("Lagu tidak ditemukan.");
 
     const r = data.result;
+
+    // Format duration: dari detik (211) jadi "3:31"
+    let durationText = "";
+    if (r.duration) {
+      const total = Number(r.duration);
+      if (!isNaN(total) && total > 0) {
+        const min = Math.floor(total / 60);
+        const sec = String(total % 60).padStart(2, "0");
+        durationText = `${min}:${sec}`;
+      }
+    }
+
+    // Parse artis dari title — biasanya format "ARTIST - Title"
+    let title = safeText(r.title, 200);
+    let artist = "";
+    const dashIdx = title.indexOf(" - ");
+    if (dashIdx > 0) {
+      artist = title.slice(0, dashIdx).trim();
+      title = title.slice(dashIdx + 3).trim();
+    }
+
     res.json({
       ok: true,
       result: {
-        title: safeText(r.title || r.name, 160),
-        artist: safeText(r.artist || r.author || r.channel, 120),
+        title,
+        artist,
         thumbnail: typeof r.thumbnail === "string" && r.thumbnail.startsWith("https://") ? r.thumbnail : "",
-        url: typeof r.url === "string" && r.url.startsWith("https://") ? r.url : "",
-        duration: safeText(String(r.duration || ""), 30),
-        source: safeText(r.source, 80)
+        url: typeof r.source === "string" && r.source.startsWith("https://") ? r.source : "",
+        duration: durationText,
+        source: "YouTube"
       }
     });
 
@@ -453,7 +522,7 @@ app.post("/api/spotify", requireSession, async (req, res) => {
 /* ============================================================
    /api/react — PROTECTED
    ============================================================ */
-app.post("/api/react", requireSession, async (req, res) => {
+app.post("/api/react", requireAuth, async (req, res) => {
   try {
     const url = validatePublicHttpsUrl(safeText(req.body?.url, 1000));
     const emoji = safeText(req.body?.emoji, 80);
@@ -471,7 +540,10 @@ app.post("/api/react", requireSession, async (req, res) => {
       {
         params: { api_key: apiKey, url, reaction: emoji },
         timeout: 45_000,
-        headers: { "User-Agent": "Mozilla/5.0" }
+        headers: {
+          "User-Agent": BROWSER_UA,
+          "Accept": "application/json, */*"
+        }
       }
     );
 
