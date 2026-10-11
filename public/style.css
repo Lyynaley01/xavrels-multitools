@@ -852,3 +852,143 @@ footer>span:nth-child(2){order:3;width:100%}
   .music-player audio { height: 40px; }
   .music-actions .download-btn { font-size: 9px; padding: 11px; }
 }
+/* =========================================================
+   CUSTOM AUDIO PLAYER
+   ========================================================= */
+.custom-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
+  border-top: 1px solid #e5e7eb;
+  font-family: "DM Sans", sans-serif;
+}
+
+/* Play/Pause button */
+.cap-play-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.12s ease, background 0.2s, box-shadow 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.cap-play-btn:hover {
+  background: #cb2634;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.cap-play-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.cap-play-btn svg {
+  display: block;
+  margin-left: 2px; /* optis: play triangle kesan center */
+}
+.cap-play-btn.is-playing svg {
+  margin-left: 0;
+}
+
+/* Time labels */
+.cap-time {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.3px;
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: center;
+  user-select: none;
+}
+.cap-current { color: var(--red); }
+.cap-duration { color: var(--muted); }
+
+/* Progress bar */
+.cap-progress {
+  flex: 1 1 auto;
+  position: relative;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  min-width: 0;
+}
+.cap-progress-bg {
+  position: absolute;
+  left: 0; right: 0;
+  height: 6px;
+  background: #e6e9ef;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.cap-progress-fill {
+  position: absolute;
+  left: 0;
+  height: 6px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--red), #ff6b7a);
+  border-radius: 999px;
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+.cap-progress-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 2px solid var(--red);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 6px rgba(230, 57, 70, 0.3);
+  pointer-events: none;
+  transition: left 0.1s linear, transform 0.15s ease;
+}
+.cap-progress.is-dragging .cap-progress-thumb {
+  transform: translate(-50%, -50%) scale(1.25);
+  background: var(--yellow);
+  border-color: var(--ink);
+}
+.cap-progress.is-dragging .cap-progress-fill {
+  transition: none;
+}
+
+/* Responsive */
+@media (max-width: 620px) {
+  .custom-audio-player {
+    gap: 8px;
+    padding: 12px;
+  }
+  .cap-play-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .cap-play-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .cap-time {
+    font-size: 10px;
+    min-width: 30px;
+  }
+  .cap-progress {
+    height: 20px;
+  }
+}
