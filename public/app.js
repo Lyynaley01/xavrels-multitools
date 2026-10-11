@@ -141,6 +141,15 @@ const toolInfo = {
     endpoint: "api/spotify", button: "FIND MUSIC",
     supportsUpload: false
   }
+  fpreset: {
+  title: "AM PRESET FINDER", titleLead: "AM PRESET", titleAccent: "FINDER", issue: "TOOL 06", number: "06",
+  category: "PRESET LAB", icon: "🎬",
+  description: "Cari preset Alight Motion dari link video TikTok yang kamu berikan.",
+  tip: "Gunakan link video TikTok, contoh: https://www.tiktok.com/@user/video/123",
+  label: "Link video TikTok", placeholder: "https://www.tiktok.com/@user/video/...", inputType: "url",
+  endpoint: "api/fpreset", button: "FIND PRESET",
+  supportsUpload: false
+},
 };
 
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
@@ -989,6 +998,206 @@ if (item.audio) {
   if (note) note.textContent = "Lagu ditemukan";
 }
 
+/* =========================================================
+   RENDER FPRESET — Alight Motion Preset Finder
+   ========================================================= */
+function renderFpreset(data) {
+  const item = data.result || {};
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+
+  const card = document.createElement("article");
+  card.className = "fpreset-result-card";
+
+  /* ===== HERO ===== */
+  const hero = document.createElement("div");
+  hero.className = "fpreset-hero";
+
+  if (item.cover) {
+    const bg = document.createElement("div");
+    bg.className = "fpreset-hero-bg";
+    bg.style.backgroundImage = `url("${item.cover}")`;
+    hero.append(bg);
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "fpreset-hero-overlay";
+
+  const cover = document.createElement("div");
+  cover.className = "fpreset-hero-cover";
+  if (item.avatar) {
+    const av = document.createElement("img");
+    av.src = item.avatar;
+    av.alt = "Avatar";
+    av.loading = "lazy";
+    av.onerror = () => { cover.textContent = "🎬"; };
+    cover.append(av);
+  } else if (item.cover) {
+    const im = document.createElement("img");
+    im.src = item.cover;
+    im.alt = "Cover";
+    im.loading = "lazy";
+    cover.append(im);
+  } else {
+    cover.textContent = "🎬";
+  }
+  overlay.append(cover);
+
+  const info = document.createElement("div");
+  info.className = "fpreset-hero-info";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "fpreset-hero-title";
+  titleEl.textContent = item.nickname || item.username || "Creator TikTok";
+
+  const userEl = document.createElement("p");
+  userEl.className = "fpreset-hero-user";
+  userEl.textContent = item.username ? `@${item.username.replace(/^@/, "")}` : "";
+
+  info.append(titleEl);
+  if (userEl.textContent) info.append(userEl);
+
+  const metaRow = document.createElement("div");
+  metaRow.className = "fpreset-hero-meta";
+
+  if (item.stats?.likes) {
+    const c = document.createElement("span");
+    c.className = "fpreset-chip";
+    c.innerHTML = `❤️ <b>${formatNumber(item.stats.likes)}</b>`;
+    metaRow.append(c);
+  }
+  if (item.stats?.plays) {
+    const c = document.createElement("span");
+    c.className = "fpreset-chip";
+    c.innerHTML = `▶ <b>${formatNumber(item.stats.plays)}</b>`;
+    metaRow.append(c);
+  }
+  const presetCount = Array.isArray(item.presetLinks) ? item.presetLinks.length : 0;
+  if (presetCount > 0) {
+    const c = document.createElement("span");
+    c.className = "fpreset-chip fpreset-chip-accent";
+    c.innerHTML = `🎬 <b>${presetCount} preset</b>`;
+    metaRow.append(c);
+  }
+
+  if (metaRow.children.length) info.append(metaRow);
+  overlay.append(info);
+  hero.append(overlay);
+  card.append(hero);
+
+  /* ===== Caption ===== */
+  if (item.caption) {
+    const cap = document.createElement("div");
+    cap.className = "fpreset-caption";
+    cap.textContent = item.caption;
+    card.append(cap);
+  }
+
+  /* ===== Preset links list ===== */
+  const presetLinks = Array.isArray(item.presetLinks) ? item.presetLinks : [];
+  if (presetLinks.length) {
+    const listWrap = document.createElement("div");
+    listWrap.className = "fpreset-list";
+
+    const listTitle = document.createElement("div");
+    listTitle.className = "fpreset-list-title";
+    listTitle.innerHTML = `📦 <strong>Preset Tersedia</strong> <span>(${presetLinks.length})</span>`;
+    listWrap.append(listTitle);
+
+    presetLinks.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "fpreset-item";
+
+      const badge = document.createElement("span");
+      badge.className = "fpreset-item-type";
+      const typeRaw = String(p.type || "").toLowerCase();
+      const titleRaw = String(p.title || "").toLowerCase();
+      let label = (p.type || "PRESET").toUpperCase();
+      if (typeRaw.includes("5mb") || titleRaw.includes("5mb")) label = "5MB";
+      else if (typeRaw.includes("xml") || titleRaw.includes("xml")) label = "XML";
+      badge.textContent = label;
+
+      const body = document.createElement("div");
+      body.className = "fpreset-item-body";
+
+      const name = document.createElement("strong");
+      name.textContent = p.title || `Preset ${i + 1}`;
+      body.append(name);
+
+      const metaBits = [];
+      if (p.size) metaBits.push(`📦 ${p.size}`);
+      if (p.ratio) metaBits.push(`📐 ${p.ratio}`);
+      if (metaBits.length) {
+        const meta = document.createElement("span");
+        meta.textContent = metaBits.join(" · ");
+        body.append(meta);
+      }
+      if (p.detail) {
+        const detail = document.createElement("small");
+        detail.textContent = p.detail;
+        body.append(detail);
+      }
+
+      const action = document.createElement("a");
+      action.className = "fpreset-item-dl";
+      action.href = p.url;
+      action.target = "_blank";
+      action.rel = "noopener noreferrer";
+      action.setAttribute("download", "");
+      action.innerHTML = `⬇ <span>DOWNLOAD</span>`;
+
+      row.append(badge, body, action);
+      listWrap.append(row);
+    });
+
+    card.append(listWrap);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "fpreset-no-preset";
+    empty.textContent = "⚠️ Tidak ada preset 5MB/XML di response API ini.";
+    card.append(empty);
+  }
+
+  /* ===== Actions ===== */
+  const actions = document.createElement("div");
+  actions.className = "fpreset-actions";
+
+  if (item.sourceUrl) {
+    const open = document.createElement("a");
+    open.className = "download-btn";
+    open.href = item.sourceUrl;
+    open.target = "_blank";
+    open.rel = "noopener noreferrer";
+    open.textContent = "▶  BUKA DI TIKTOK";
+    actions.append(open);
+  }
+  if (item.presetUrl) {
+    const dl = document.createElement("a");
+    dl.className = "download-btn fpreset-primary";
+    dl.href = item.presetUrl;
+    dl.target = "_blank";
+    dl.rel = "noopener noreferrer";
+    dl.setAttribute("download", "");
+    dl.textContent = "⬇  DOWNLOAD PRESET UTAMA";
+    actions.append(dl);
+  }
+
+  if (actions.children.length) card.append(actions);
+
+  resultArea.append(card);
+
+  const note = $("#resultHeadingNote");
+  if (note) note.textContent = `${presetLinks.length} preset ditemukan`;
+}
+
+function formatNumber(n) {
+  const num = Number(n);
+  if (!num || isNaN(num)) return "0";
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(1) + "K";
+  return String(num);
+}
+
 
 /* =========================================================
    TOOL NAVIGATION
@@ -1065,7 +1274,7 @@ function goHome(updateHistory = true) {
 }
 
 function syncRoute() {
-  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify)$/);
+  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset)$/);
   if (match) openTool(match[1], false);
   else goHome(false);
 }
@@ -1140,8 +1349,9 @@ if (form) {
       const value = input.value.trim();
       if (!value) return;
       const payload = (activeTool === "pinterest" || activeTool === "spotify")
-        ? { query: value }
-        : { url: value };
+  ? { query: value }
+  : { url: value };
+// fpreset pakai { url: value } — sama seperti hd/remove-bg/react
       if (activeTool === "react") payload.emoji = extra.value.trim();
       fetchOptions = {
         method: "POST",
@@ -1185,8 +1395,9 @@ if (form) {
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "Request gagal.");
         if (activeTool === "pinterest") renderPinterest(data);
-        else if (activeTool === "spotify") renderMusic(data);
-        else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
+else if (activeTool === "spotify") renderMusic(data);
+else if (activeTool === "fpreset") renderFpreset(data);
+else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
       }
     } catch (error) {
       showMessage(error.message || "Terjadi kesalahan. Coba lagi nanti.", "error");

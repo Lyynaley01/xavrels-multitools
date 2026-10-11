@@ -1,125 +1,208 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#e63946">
-<meta name="description" content="Xavrels MultiTools — web tools dengan vibe komik spider-hero.">
-<title>XAVRELS // MULTITOOLS</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#e63946">
+  <meta name="description" content="Xavrels MultiTools — web tools dengan vibe komik spider-hero.">
+  <title>XAVRELS // MULTITOOLS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="halftone"></div><div class="web web-a"></div><div class="web web-b"></div>
-<header class="topbar">
-  <a class="brand" href="#" aria-label="Xavrels home"><span class="brand-mark">X</span><span>XAVRELS<span class="brand-sub">MULTITOOLS</span></span></a>
-  <div class="top-status"><span class="status-dot"></span> SYSTEM ONLINE</div>
-  <button class="menu-toggle" id="menuToggle" aria-label="Buka menu" type="button">☰</button>
-</header>
-<main>
-<div id="homeView">
-<section class="hero">
-  <div class="hero-copy">
-    <div class="eyebrow"><span>ISSUE #001</span><span>YOUR FRIENDLY TOOL HUB</span></div>
-    <h1>YOUR WEB.<br><span>YOUR TOOLS.</span></h1>
-    <p class="hero-text">Satu markas buat semua kebutuhan digital. Pilih tool, masukin input, dan biarkan sisi superhero kamu bekerja.</p>
-    <div class="hero-actions"><a href="#tools" class="primary-btn">EXPLORE TOOLS <span>↘</span></a><span class="mini-note">FAST • SIMPLE • SECURE BY DESIGN</span></div>
-    <div class="hero-stats"><div><strong>05</strong><small>ACTIVE TOOLS</small></div><i></i><div><strong>∞</strong><small>CREATIVE MODE</small></div><i></i><div><strong>24/7</strong><small>READY TO GO</small></div></div>
-  </div>
-  <div class="hero-art" aria-label="Ilustrasi komik superhero bertema jaring">
-    <div class="burst"></div><div class="comic-caption">POWER<br>UP!</div>
-    <div class="hero-orb"><div class="orb-web"></div><div class="orb-eye eye-left"></div><div class="orb-eye eye-right"></div><div class="orb-glint"></div></div>
-    <div class="speed speed-one"></div><div class="speed speed-two"></div><div class="speed speed-three"></div>
-    <div class="art-sticker sticker-top">CLICK!</div><div class="art-sticker sticker-bottom">LET'S GO</div>
-    <div class="art-number">01</div>
-  </div>
-</section>
-<section class="section-head" id="tools"><div><p class="kicker">THE TOOLBOX</p><h2>CHOOSE YOUR <span>POWER</span></h2></div><div class="search-wrap"><span>⌕</span><input id="searchInput" placeholder="Cari tool..." aria-label="Cari tool"></div></section>
-<section class="tool-grid" id="toolGrid">
-  <article class="tool-card red" data-tool="hd"><div class="card-top"><span class="tool-icon">▧</span><span class="issue">01 / IMAGE</span></div><div class="card-art art-hd"><span>HD</span><b>UPGRADE!</b><i>✦</i></div><h3>HD IMAGE</h3><p>Naikkan resolusi gambar. Bisa via link atau upload file.</p><button class="tool-btn" data-open="hd" type="button">OPEN TOOL <span>↗</span></button></article>
-  <article class="tool-card blue" data-tool="remove-bg"><div class="card-top"><span class="tool-icon">✂</span><span class="issue">02 / IMAGE</span></div><div class="card-art art-bg"><span>BG</span><b>BYE BYE!</b><i>◌</i></div><h3>REMOVE BG</h3><p>Hilangkan background. Bisa via link atau upload file.</p><button class="tool-btn" data-open="remove-bg" type="button">OPEN TOOL <span>↗</span></button></article>
-  <article class="tool-card yellow" data-tool="react"><div class="card-top"><span class="tool-icon">⚡</span><span class="issue">03 / SOCIAL</span></div><div class="card-art art-react"><span>❤️</span><b>REACTION!</b><i>⚡</i></div><h3>WA CHANNEL REACT</h3><p>Kirim request reaksi untuk postingan channel WhatsApp.</p><button class="tool-btn" data-open="react" type="button">OPEN TOOL <span>↗</span></button></article>
-  <article class="tool-card pink" data-tool="pinterest"><div class="card-top"><span class="tool-icon">⌕</span><span class="issue">04 / DISCOVER</span></div><div class="card-art art-pin"><span>PIN</span><b>FIND IT!</b><i>✦</i></div><h3>PINTEREST SEARCH</h3><p>Temukan referensi visual dari keyword pilihanmu.</p><button class="tool-btn" data-open="pinterest" type="button">OPEN TOOL <span>↗</span></button></article>
-  <article class="tool-card green" data-tool="spotify"><div class="card-top"><span class="tool-icon">♫</span><span class="issue">05 / MUSIC</span></div><div class="card-art art-music"><span>♫</span><b>PLAY THAT!</b><i>♪</i></div><h3>MUSIC FINDER</h3><p>Cari lagu, artis, dan tautan hasil pencarian.</p><button class="tool-btn" data-open="spotify" type="button">OPEN TOOL <span>↗</span></button></article>
-  <article class="tool-card dark" data-tool="amprem"><div class="card-top"><span class="tool-icon">✦</span><span class="issue">06 / PREMIUM</span></div><div class="card-art art-prem"><span>AM</span><b>PREMIUM!</b><i>✦</i></div><h3>AMPREM V2</h3><p>Lanjutkan lewat bot Telegram dengan guard kredit & verifikasi.</p><a class="tool-btn link-btn" id="ampremLink" href="https://t.me/" target="_blank" rel="noopener noreferrer">OPEN TELEGRAM <span>↗</span></a></article>
-</section>
-<div class="empty-state" id="emptyState" hidden>Tool tidak ditemukan. Coba keyword lain 🕸️</div>
-<section class="safety-strip"><div class="shield">✓</div><div><strong>YOUR KEYS STAY BEHIND THE MASK.</strong><p>Request API diproses lewat server. API key tidak dikirim ke browser.</p></div><span class="safe-tag">SERVER-SIDE API</span></section>
-<footer><a class="brand footer-brand" href="#"><span class="brand-mark">X</span><span>XAVRELS<span class="brand-sub">MULTITOOLS</span></span></a><span>MADE FOR THE CREATIVE SIDEKICK.</span><span class="footer-issue">VOL. 01 · 2026</span></footer>
-</div>
-<section class="tool-workspace" id="toolView" hidden aria-live="polite">
-  <div class="workspace-topline">
-    <button class="back-btn" id="backHome" type="button"><span>←</span> ALL TOOLS</button>
-    <span class="workspace-edition">XAVRELS LABS / <b id="workspaceIssue">TOOL 01</b></span>
-  </div>
-  <div class="workspace-layout">
-    <section class="workspace-intro">
-      <div class="workspace-icon" id="workspaceIcon">▧</div>
-      <p class="kicker" id="workspaceCategory">IMAGE LAB</p>
-      <h1 class="workspace-title" id="workspaceTitle">HD <span>IMAGE</span></h1>
-      <p class="workspace-description" id="workspaceDescription">Tingkatkan resolusi gambar dengan proses upscale.</p>
-      <div class="workspace-tip"><span>✦</span><div><strong>QUICK TIP</strong><p id="workspaceTip">Gunakan direct link gambar HTTPS yang bisa diakses publik.</p></div></div>
-      <div class="workspace-mini-stats"><span><i class="status-dot"></i> SERVER READY</span><span>SECURE REQUEST</span></div>
-    </section>
-    <section class="workspace-panel">
-      <div class="panel-heading"><div><p class="kicker">TOOL CONSOLE</p><h2>Let's make it <span>happen.</span></h2></div><span class="panel-number" id="panelNumber">01</span></div>
-      <form id="toolForm" class="workspace-form">
+  <!-- Background -->
+  <div class="halftone"></div>
+  <div class="web web-a"></div>
+  <div class="web web-b"></div>
 
-        <!-- ==== INPUT MODE TABS (hanya untuk tool image) ==== -->
-        <div class="input-tabs" id="inputTabs" hidden>
-          <button type="button" class="input-tab active" data-mode="url">
-            <span class="tab-icon">🔗</span> PAKAI LINK
-          </button>
-          <button type="button" class="input-tab" data-mode="upload">
-            <span class="tab-icon">📁</span> UPLOAD FILE
-          </button>
+  <!-- Header -->
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Xavrels home"><span class="brand-mark">X</span><span>XAVRELS<span class="brand-sub">MULTITOOLS</span></span></a>
+    <div class="top-status"><span class="status-dot"></span> SYSTEM ONLINE</div>
+    <button class="menu-toggle" id="menuToggle" aria-label="Buka menu" type="button">☰</button>
+  </header>
+
+  <main>
+    <!-- Home -->
+    <div id="homeView">
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow"><span>ISSUE #001</span><span>YOUR FRIENDLY TOOL HUB</span></div>
+          <h1>YOUR WEB.<br><span>YOUR TOOLS.</span></h1>
+          <p class="hero-text">Satu markas buat semua kebutuhan digital. Pilih tool, masukin input, dan biarkan sisi superhero kamu bekerja.</p>
+          <div class="hero-actions"><a href="#tools" class="primary-btn">EXPLORE TOOLS <span>↘</span></a><span class="mini-note">FAST • SIMPLE • SECURE BY DESIGN</span></div>
+          <div class="hero-stats"><div><strong>05</strong><small>ACTIVE TOOLS</small></div><i></i><div><strong>∞</strong><small>CREATIVE MODE</small></div><i></i><div><strong>24/7</strong><small>READY TO GO</small></div></div>
         </div>
-
-        <!-- ==== MODE: URL ==== -->
-        <div class="input-mode" id="modeUrl">
-          <label id="inputLabel" for="toolInput">Direct image URL (HTTPS)</label>
-          <input id="toolInput" type="url" placeholder="https://example.com/photo.jpg" autocomplete="url">
+        <div class="hero-art" aria-label="Ilustrasi komik superhero bertema jaring">
+          <div class="burst"></div>
+          <div class="comic-caption">POWER<br>UP!</div>
+          <div class="hero-orb"><div class="orb-web"></div><div class="orb-eye eye-left"></div><div class="orb-eye eye-right"></div><div class="orb-glint"></div></div>
+          <div class="speed speed-one"></div><div class="speed speed-two"></div><div class="speed speed-three"></div>
+          <div class="art-sticker sticker-top">CLICK!</div>
+          <div class="art-sticker sticker-bottom">LET'S GO</div>
+          <div class="art-number">01</div>
         </div>
+      </section>
 
-        <!-- ==== MODE: UPLOAD ==== -->
-        <div class="input-mode" id="modeUpload" hidden>
-          <label for="fileInput">Upload gambar dari perangkat</label>
-          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Pilih atau drop gambar">
-            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" hidden>
-            <div class="dropzone-inner" id="dropzoneInner">
-              <div class="dropzone-icon">⬆</div>
-              <strong>KLIK, DROP, atau PASTE gambar</strong>
-              <span>PNG · JPG · WEBP · max 10 MB</span>
-            </div>
-            <div class="dropzone-preview" id="dropzonePreview" hidden>
-              <img id="previewImg" alt="Preview upload">
-              <div class="preview-meta">
-                <div>
-                  <strong id="previewName">nama-file.jpg</strong>
-                  <span id="previewSize">0 KB</span>
-                </div>
-                <button type="button" class="clear-file" id="clearFile" aria-label="Hapus file">✕</button>
-              </div>
-            </div>
-          </div>
-          <p class="dropzone-hint">Atau tempel gambar langsung dari clipboard (Ctrl+V).</p>
-        </div>
+      <!-- Tools Heading -->
+      <section class="section-head" id="tools">
+        <div><p class="kicker">THE TOOLBOX</p><h2>CHOOSE YOUR <span>POWER</span></h2></div>
+        <div class="search-wrap"><span>⌕</span><input id="searchInput" placeholder="Cari tool..." aria-label="Cari tool"></div>
+      </section>
 
-        <!-- ==== EXTRA FIELD (react) ==== -->
-        <div id="secondField" class="extra-field" hidden><label for="toolExtra">Emoji reaksi</label><input id="toolExtra" type="text" placeholder="❤️, 🔥, 😂" maxlength="60"></div>
+      <!-- Tool Cards -->
+      <section class="tool-grid" id="toolGrid">
+        <article class="tool-card red" data-tool="hd">
+          <div class="card-top"><span class="tool-icon">▧</span><span class="issue">01 / IMAGE</span></div>
+          <div class="card-art art-hd"><span>HD</span><b>UPGRADE!</b><i>✦</i></div>
+          <h3>HD IMAGE</h3>
+          <p>Naikkan resolusi gambar. Bisa via link atau upload file.</p>
+          <button class="tool-btn" data-open="hd" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
 
-        <button class="primary-btn submit-btn" type="submit" id="submitBtn"><span id="submitLabel">RUN TOOL</span><span class="submit-arrow">↗</span></button>
-      </form>
-      <div class="result-shell" id="resultShell" hidden>
-        <div class="result-heading"><span class="result-indicator"></span><strong>RESULT</strong><span class="result-heading-note" id="resultHeadingNote">Output akan muncul di sini</span></div>
-        <div class="result-area" id="resultArea" aria-live="polite"></div>
+        <article class="tool-card blue" data-tool="remove-bg">
+          <div class="card-top"><span class="tool-icon">✂</span><span class="issue">02 / IMAGE</span></div>
+          <div class="card-art art-bg"><span>BG</span><b>BYE BYE!</b><i>◌</i></div>
+          <h3>REMOVE BG</h3>
+          <p>Hilangkan background. Bisa via link atau upload file.</p>
+          <button class="tool-btn" data-open="remove-bg" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <article class="tool-card yellow" data-tool="react">
+          <div class="card-top"><span class="tool-icon">⚡</span><span class="issue">03 / SOCIAL</span></div>
+          <div class="card-art art-react"><span>❤️</span><b>REACTION!</b><i>⚡</i></div>
+          <h3>WA CHANNEL REACT</h3>
+          <p>Kirim request reaksi untuk postingan channel WhatsApp.</p>
+          <button class="tool-btn" data-open="react" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <article class="tool-card pink" data-tool="pinterest">
+          <div class="card-top"><span class="tool-icon">⌕</span><span class="issue">04 / DISCOVER</span></div>
+          <div class="card-art art-pin"><span>PIN</span><b>FIND IT!</b><i>✦</i></div>
+          <h3>PINTEREST SEARCH</h3>
+          <p>Temukan referensi visual dari keyword pilihanmu.</p>
+          <button class="tool-btn" data-open="pinterest" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+
+        <article class="tool-card green" data-tool="spotify">
+          <div class="card-top"><span class="tool-icon">♫</span><span class="issue">05 / MUSIC</span></div>
+          <div class="card-art art-music"><span>♫</span><b>PLAY THAT!</b><i>♪</i></div>
+          <h3>MUSIC FINDER</h3>
+          <p>Cari lagu, artis, dan tautan hasil pencarian.</p>
+          <button class="tool-btn" data-open="spotify" type="button">OPEN TOOL <span>↗</span></button>
+        </article>
+        
+<article class="tool-card dark" data-tool="amprem"><div class="card-top"><span class="tool-icon">✦</span><span class="issue">07 / PREMIUM</span></div><div class="card-art art-fpreset"><span>AM</span><b>PRESET!</b><i>✦</i></div><h3>AM PRESET FINDER</h3><p>Cari preset Alight Motion dari link video TikTok.</p><button class="tool-btn" data-open="fpreset" type="button">OPEN TOOL <span>↗</span></button></article>
+
+        <article class="tool-card dark" data-tool="amprem">
+          <div class="card-top"><span class="tool-icon">✦</span><span class="issue">06 / PREMIUM</span></div>
+          <div class="card-art art-prem"><span>AM</span><b>PREMIUM!</b><i>✦</i></div>
+          <h3>AMPREM V2</h3>
+          <p>Lanjutkan lewat bot Telegram dengan guard kredit &amp; verifikasi.</p>
+          <a class="tool-btn link-btn" id="ampremLink" href="https://t.me/" target="_blank" rel="noopener noreferrer">OPEN TELEGRAM <span>↗</span></a>
+        </article>
+      </section>
+
+      <div class="empty-state" id="emptyState" hidden>Tool tidak ditemukan. Coba keyword lain 🕸️</div>
+
+      <!-- Security -->
+      <section class="safety-strip">
+        <div class="shield">✓</div>
+        <div><strong>YOUR KEYS STAY BEHIND THE MASK.</strong><p>Request API diproses lewat server. API key tidak dikirim ke browser.</p></div>
+        <span class="safe-tag">SERVER-SIDE API</span>
+      </section>
+
+      <!-- Footer -->
+      <footer>
+        <a class="brand footer-brand" href="#"><span class="brand-mark">X</span><span>XAVRELS<span class="brand-sub">MULTITOOLS</span></span></a>
+        <span>MADE FOR THE CREATIVE SIDEKICK.</span>
+        <span class="footer-issue">VOL. 01 · 2026</span>
+      </footer>
+    </div>
+
+    <!-- Tool Workspace -->
+    <section class="tool-workspace" id="toolView" hidden aria-live="polite">
+      <div class="workspace-topline">
+        <button class="back-btn" id="backHome" type="button"><span>←</span> ALL TOOLS</button>
+        <span class="workspace-edition">XAVRELS LABS / <b id="workspaceIssue">TOOL 01</b></span>
       </div>
-      <div class="panel-foot"><span>✦ XAVRELS MULTITOOLS</span><span>YOUR INPUT STAYS IN CONTROL</span></div>
+
+      <div class="workspace-layout">
+        <!-- Tool Information -->
+        <section class="workspace-intro">
+          <div class="workspace-icon" id="workspaceIcon">▧</div>
+          <p class="kicker" id="workspaceCategory">IMAGE LAB</p>
+          <h1 class="workspace-title" id="workspaceTitle">HD <span>IMAGE</span></h1>
+          <p class="workspace-description" id="workspaceDescription">Tingkatkan resolusi gambar dengan proses upscale.</p>
+          <div class="workspace-tip"><span>✦</span><div><strong>QUICK TIP</strong><p id="workspaceTip">Gunakan direct link gambar HTTPS yang bisa diakses publik.</p></div></div>
+          <div class="workspace-mini-stats"><span><i class="status-dot"></i> SERVER READY</span><span>SECURE REQUEST</span></div>
+        </section>
+
+        <!-- Tool Console -->
+        <section class="workspace-panel">
+          <div class="panel-heading">
+            <div><p class="kicker">TOOL CONSOLE</p><h2>Let's make it <span>happen.</span></h2></div>
+            <span class="panel-number" id="panelNumber">01</span>
+          </div>
+
+          <form id="toolForm" class="workspace-form">
+            <!-- Input Mode Tabs -->
+            <div class="input-tabs" id="inputTabs" hidden>
+              <button type="button" class="input-tab active" data-mode="url"><span class="tab-icon">🔗</span> PAKAI LINK</button>
+              <button type="button" class="input-tab" data-mode="upload"><span class="tab-icon">📁</span> UPLOAD FILE</button>
+            </div>
+
+            <!-- URL Input -->
+            <div class="input-mode" id="modeUrl">
+              <label id="inputLabel" for="toolInput">Direct image URL (HTTPS)</label>
+              <input id="toolInput" type="url" placeholder="https://example.com/photo.jpg" autocomplete="url">
+            </div>
+
+            <!-- File Upload -->
+            <div class="input-mode" id="modeUpload" hidden>
+              <label for="fileInput">Upload gambar dari perangkat</label>
+              <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Pilih atau drop gambar">
+                <input id="fileInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" hidden>
+                <div class="dropzone-inner" id="dropzoneInner">
+                  <div class="dropzone-icon">⬆</div>
+                  <strong>KLIK, DROP, atau PASTE gambar</strong>
+                  <span>PNG · JPG · WEBP · max 10 MB</span>
+                </div>
+                <div class="dropzone-preview" id="dropzonePreview" hidden>
+                  <img id="previewImg" alt="Preview upload">
+                  <div class="preview-meta">
+                    <div><strong id="previewName">nama-file.jpg</strong><span id="previewSize">0 KB</span></div>
+                    <button type="button" class="clear-file" id="clearFile" aria-label="Hapus file">✕</button>
+                  </div>
+                </div>
+              </div>
+              <p class="dropzone-hint">Atau tempel gambar langsung dari clipboard (Ctrl+V).</p>
+            </div>
+
+            <!-- Reaction Field -->
+            <div id="secondField" class="extra-field" hidden>
+              <label for="toolExtra">Emoji reaksi</label>
+              <input id="toolExtra" type="text" placeholder="❤️, 🔥, 😂" maxlength="60">
+            </div>
+
+            <!-- Submit -->
+            <button class="primary-btn submit-btn" type="submit" id="submitBtn"><span id="submitLabel">RUN TOOL</span><span class="submit-arrow">↗</span></button>
+          </form>
+
+          <!-- Result -->
+          <div class="result-shell" id="resultShell" hidden>
+            <div class="result-heading"><span class="result-indicator"></span><strong>RESULT</strong><span class="result-heading-note" id="resultHeadingNote">Output akan muncul di sini</span></div>
+            <div class="result-area" id="resultArea" aria-live="polite"></div>
+          </div>
+
+          <div class="panel-foot"><span>✦ XAVRELS MULTITOOLS</span><span>YOUR INPUT STAYS IN CONTROL</span></div>
+        </section>
+      </div>
     </section>
-  </div>
-</section>
-</main>
-<script src="app.js" defer></script>
-</body></html>
+  </main>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

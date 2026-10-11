@@ -564,6 +564,192 @@ app.post("/api/react", requireAuth, async (req, res) => {
 
 
 /* ============================================================
+   FPRESET — Alight Motion Preset Finder (dari TikTok)
+   ============================================================ */
+
+const FPRESET_API_BASE = process.env.FPRESET_API_BASE || "https://amfinder.web.id/api/find";
+
+function fp_isTikTokUrl(value) {
+  try {
+    const u = new URL(value);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    return host === "tiktok.com" || host.endsWith(".tiktok.com");
+  } catch {
+    return false;
+  }
+}
+
+function fp_extractUrls(value) {
+  if (value == null) return [];
+  const matches = String(value).match(/https?:\/\/[^\s<>"']+/g) || [];
+  return matches.map((u) => u.replace(/[),.;]+$/g, "").trim());
+}
+
+function fp_walkObject(data, callback) {
+  if (data == null) return;
+  if (typeof data === "string") { callback(data); return; }
+  if (Array.isArray(data)) { for (const item of data) fp_walkObject(item, callback); return; }
+  if (typeof data === "object") {
+    for (const value of Object.values(data)) {
+      callback(value);
+      fp_walkObject(value, callback);
+    }
+  }
+}
+
+function fp_findAllUrls(data) {
+  const found = [];
+  fp_walkObject(data, (value) => {
+    if (typeof value !== "string") return;
+    for (const url of fp_extractUrls(value)) found.push(url);
+  });
+  return [...new Set(found)];
+}
+
+function fp_findPresetUrls(data) {
+  const found = [];
+  fp_walkObject(data, (value) => {
+    if (typeof value !== "string") return;
+    for (const url of fp_extractUrls(value)) {
+      const l = url.toLowerCase();
+      if (l.includes("alight") || l.includes("preset") ||
+          l.includes("xml") || l.includes("project")) {
+        found.push(url);
+      }
+    }
+  });
+  return [...new Set(found)];
+}
+
+function fp_parseAmFinderResponse(rawData) {
+  if (rawData && typeof rawData === "object") return rawData;
+
+  const text = String(rawData ?? "").trim();
+  if (!text) throw new Error("API tidak mengembalikan data.");
+
+  const lines = text.split(/\r?\n/);
+  let currentEvent = null;
+
+  for (const line of lines) {
+    if (line.startsWith("event:")) { currentEvent = line.slice(6).trim(); continue; }
+    if (currentEvent === "result" && line.startsWith("data:")) {
+      const payload = line.slice(5).trim();
+      try { return JSON.parse(payload); } catch (_) {}
+    }
+  }
+
+  try { return JSON.parse(text); } catch (_) {}
+
+  for (const line of [...lines].reverse()) {
+    if (!line.startsWith("data:")) continue;
+    const payload = line.slice(5).trim();
+    try { const p = JSON.parse(payload); if (p && typeof p === "object") return p; } catch (_) {}
+  }
+
+  throw new Error("Format response API tidak dikenali.");
+}
+
+function fp_firstPresetLink(presetLinks = []) {
+  if (!Array.isArray(presetLinks)) return null;
+  return (
+    presetLinks.find((i) => i?.type === "5mb") ||
+    presetLinks.find((i) => i?.type === "xml") ||
+    presetLinks.find((i) => i?.url) ||
+    null
+  );
+}
+
+app.post("/api/fpreset", requireAuth, async (req, res) => {
+  try {
+    const inputUrl = safeText(req.body?.url, 1000);
+    if (!inputUrl) throw new Error("Masukkan link video TikTok.");
+    if (!fp_isTikTokUrl(inputUrl)) throw new Error("URL harus berupa link TikTok yang valid.");
+
+    const response = await http.get(FPRESET_API_BASE, {
+      params: { url: inputUrl },
+      timeout: 45_000,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "text/event-stream, application/json, text/plain, */*"
+      },
+      validateStatus: () => true
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      const apiMsg = response.data?.message || response.data?.error || response.data?.description;
+      throw new Error(apiMsg ? `API error: ${apiMsg}` : `API mengembalikan HTTP ${response.status}.`);
+    }
+
+    const data = fp_parseAmFinderResponse(response.data);
+    if (!data) throw new Error("API tidak mengembalikan data.");
+
+    const presetUrls = fp_findPresetUrls(data);
+    let presetUrl = presetUrls[0] || null;
+
+    if (!presetUrl) {
+      const allUrls = fp_findAllUrls(data);
+      presetUrl = allUrls.find((u) => {
+        const l = u.toLowerCase();
+        return !l.includes("tiktok.com") &&
+          (l.includes("preset") || l.includes("alight") || l.includes("xml") || l.includes("project"));
+      }) || null;
+    }
+
+    if (!presetUrl) throw new Error("Link preset tidak ditemukan pada response API.");
+
+    const video        = data.video        || {};
+    const authorDetail = data.authorDetail || {};
+    const presetLinks  = Array.isArray(data.presetLinks)
+      ? data.presetLinks
+          .filter((i) => i?.url && typeof i.url === "string")
+          .map((i) => ({
+            type: safeText(String(i.type || ""), 40),
+            title: safeText(String(i.title || ""), 120),
+            url: safeText(i.url, 800),
+            size: safeText(String(i.size || ""), 40),
+            ratio: safeText(String(i.ratio || ""), 40),
+            detail: safeText(String(i.detail || ""), 200)
+          }))
+      : [];
+    const selectedPreset = fp_firstPresetLink(presetLinks);
+
+    const result = {
+      username:
+        safeText(String(data.author || authorDetail.uniqueId || ""), 80) ||
+        "Tidak diketahui",
+      nickname: safeText(String(authorDetail.nickname || ""), 80),
+      bio: safeText(String(authorDetail.bio || ""), 300),
+      avatar: typeof authorDetail.avatar === "string" && /^https?:\/\//i.test(authorDetail.avatar)
+        ? authorDetail.avatar
+        : "",
+      caption: safeText(String(video.description || ""), 500),
+      cover: typeof video.cover === "string" && /^https?:\/\//i.test(video.cover)
+        ? video.cover
+        : "",
+      sourceUrl: typeof video.url === "string" && /^https?:\/\//i.test(video.url)
+        ? video.url
+        : (inputUrl || ""),
+      presetUrl: safeText(selectedPreset?.url || presetUrl, 800),
+      presetLinks,
+      stats: {
+        likes: Number(video.stats?.likes || 0) || null,
+        comments: Number(video.stats?.comments || 0) || null,
+        shares: Number(video.stats?.shares || 0) || null,
+        plays: Number(video.stats?.plays || 0) || null
+      }
+    };
+
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, result });
+
+  } catch (err) {
+    console.error("❌ [/api/fpreset]", err.message);
+    sendError(res, err);
+  }
+});
+
+
+/* ============================================================
    FALLBACK
    ============================================================ */
 app.get("*", (req, res) => {

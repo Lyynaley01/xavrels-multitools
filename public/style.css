@@ -1372,3 +1372,289 @@ footer>span:nth-child(2){order:3;width:100%}
   }
   .pin-result-card { opacity: 1; transform: none; }
 }
+/* =========================================================
+   FPRESET RESULT — Alight Motion Preset Finder
+   ========================================================= */
+.fpreset-result-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px solid #d9dce2;
+  background: #fff;
+}
+
+/* HERO */
+.fpreset-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: linear-gradient(135deg, #252b4b 0%, #12172e 100%);
+}
+.fpreset-hero-bg {
+  position: absolute;
+  inset: -20px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.4) brightness(0.55);
+  transform: scale(1.15);
+  z-index: 0;
+}
+.fpreset-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(10, 14, 20, 0.78) 0%,
+    rgba(10, 14, 20, 0.55) 55%,
+    rgba(10, 14, 20, 0.9) 100%
+  );
+  z-index: 1;
+}
+.fpreset-hero-cover {
+  flex: 0 0 auto;
+  width: 110px;
+  height: 110px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  font-size: 40px;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+}
+.fpreset-hero-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.fpreset-hero-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #fff;
+}
+.fpreset-hero-title {
+  font-family: "Bangers", cursive;
+  font-size: clamp(22px, 3.5vw, 30px);
+  letter-spacing: 1px;
+  line-height: 1.1;
+  margin: 0;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+.fpreset-hero-user {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fpreset-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.fpreset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.fpreset-chip-accent {
+  background: rgba(255, 210, 63, 0.9);
+  border-color: rgba(255, 210, 63, 1);
+  color: #171b2b;
+}
+
+/* Caption */
+.fpreset-caption {
+  padding: 14px 16px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #3f4756;
+  background: #fff;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* List preset */
+.fpreset-list {
+  padding: 14px;
+  background: #f7f8fb;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fpreset-list-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #171b2b;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.fpreset-list-title span {
+  font-size: 10px;
+  color: #646b7a;
+  font-weight: 700;
+}
+
+.fpreset-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.fpreset-item-type {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  background: var(--yellow);
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+}
+.fpreset-item-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fpreset-item-body strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: #171b2b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fpreset-item-body span {
+  font-size: 9px;
+  color: #646b7a;
+  font-weight: 700;
+}
+.fpreset-item-body small {
+  font-size: 9px;
+  color: #8a919e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+.fpreset-item-dl {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--red);
+  border: 1.5px solid var(--red);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  transition: background 0.2s, border-color 0.2s, transform 0.12s;
+}
+.fpreset-item-dl:hover {
+  background: #c4001f;
+  border-color: #c4001f;
+  transform: translate(1px, 1px);
+}
+
+.fpreset-no-preset {
+  padding: 14px;
+  background: #fff8df;
+  border-top: 1px solid #f1d985;
+  font-size: 11px;
+  color: #68551b;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Actions */
+.fpreset-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+.fpreset-actions .download-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+}
+.fpreset-primary {
+  background: var(--yellow) !important;
+  border-color: var(--yellow) !important;
+  color: var(--ink) !important;
+}
+.fpreset-primary:hover {
+  background: #ffb80f !important;
+  border-color: #ffb80f !important;
+}
+
+/* Responsive */
+@media (max-width: 620px) {
+  .fpreset-hero { aspect-ratio: 4 / 3; }
+  .fpreset-hero-overlay {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    justify-content: flex-end;
+    background: linear-gradient(
+      to top,
+      rgba(10, 14, 20, 0.95) 0%,
+      rgba(10, 14, 20, 0.65) 55%,
+      rgba(10, 14, 20, 0.35) 100%
+    );
+  }
+  .fpreset-hero-cover { width: 82px; height: 82px; font-size: 32px; }
+  .fpreset-hero-title { font-size: 22px; }
+  .fpreset-item { flex-wrap: wrap; }
+  .fpreset-item-dl { width: 100%; }
+}
