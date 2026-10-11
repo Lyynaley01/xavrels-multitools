@@ -108,11 +108,165 @@ h1 span{color:var(--red);-webkit-text-stroke:1px var(--ink);text-shadow:3px 4px 
 
 
 /* ============ SAFETY & FOOTER ============ */
-.safety-strip{width:100%;max-width:1144px;margin:0 auto 70px;padding:20px 22px;border:2px solid var(--ink);background:#e7f8ef;display:flex;align-items:center;gap:15px;box-shadow:5px 5px 0 var(--ink)}
-.shield{width:36px;height:40px;display:grid;place-items:center;background:#2cb67d;color:white;clip-path:polygon(50% 0,95% 16%,88% 69%,50% 100%,12% 69%,5% 16%);font-size:20px;font-weight:900;flex-shrink:0}
-.safety-strip strong{font-size:10px;letter-spacing:1.1px}
-.safety-strip p{margin:5px 0 0;font-size:11px;color:#596b62}
-.safe-tag{margin-left:auto;font-size:8px;letter-spacing:1px;font-weight:900;background:white;border:1px solid var(--ink);padding:7px 9px;white-space:nowrap}
+/* ===== SAFETY STRIP (komik style) ===== */
+.safety-strip{
+  width:100%;
+  max-width:1144px;
+  margin:0 auto 70px;
+  padding:22px 26px;
+  border:2px solid var(--ink);
+  background:
+    linear-gradient(135deg, #e7f8ef 0%, #d7f0e2 55%, #c9ecd8 100%);
+  display:flex;
+  align-items:center;
+  gap:18px;
+  box-shadow:6px 6px 0 var(--ink);
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+}
+
+/* Decorative dots pattern di background */
+.safety-strip::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:radial-gradient(#2cb67d33 1.5px, transparent 1.5px);
+  background-size:9px 9px;
+  opacity:.55;
+  pointer-events:none;
+  z-index:0;
+  mask-image:linear-gradient(90deg, #000 0%, #000 60%, transparent 100%);
+}
+
+/* Accent corner merah (comic vibe) */
+.safety-strip::after{
+  content:"";
+  position:absolute;
+  top:-10px;
+  right:-10px;
+  width:70px;
+  height:70px;
+  background:var(--red);
+  transform:rotate(45deg);
+  z-index:0;
+  pointer-events:none;
+}
+
+/* Shield icon — dibikin lebih tegas */
+.shield{
+  position:relative;
+  z-index:1;
+  width:48px;
+  height:52px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg, #35d18a 0%, #2cb67d 100%);
+  color:#fff;
+  clip-path:polygon(50% 0, 96% 15%, 90% 70%, 50% 100%, 10% 70%, 4% 15%);
+  font-size:24px;
+  font-weight:900;
+  flex-shrink:0;
+  filter:drop-shadow(3px 3px 0 var(--ink));
+  transform:rotate(-4deg);
+}
+.shield::after{
+  content:"✓";
+  font-size:22px;
+  line-height:1;
+  text-shadow:1px 1px 0 rgba(0,0,0,.25);
+}
+
+/* Text wrapper */
+.safety-strip > div:not(.shield){
+  position:relative;
+  z-index:1;
+  flex:1 1 auto;
+  min-width:0;
+}
+.safety-strip strong{
+  display:block;
+  font-family:"Bangers", cursive;
+  font-size:18px;
+  letter-spacing:1.4px;
+  color:var(--ink);
+  line-height:1.1;
+  margin-bottom:4px;
+  -webkit-text-stroke:.3px var(--ink);
+}
+.safety-strip p{
+  margin:0;
+  font-size:12px;
+  line-height:1.55;
+  color:#3f5a4d;
+  font-weight:600;
+  max-width:560px;
+}
+
+/* Tag "SERVER-SIDE API" — dibikin kayak stiker komik */
+.safe-tag{
+  position:relative;
+  z-index:1;
+  margin-left:auto;
+  flex-shrink:0;
+  font-family:"Bangers", cursive;
+  font-size:13px;
+  letter-spacing:1.2px;
+  background:var(--yellow);
+  color:var(--ink);
+  border:2px solid var(--ink);
+  padding:8px 12px;
+  white-space:nowrap;
+  box-shadow:3px 3px 0 var(--ink);
+  transform:rotate(3deg);
+}
+
+/* ===== RESPONSIVE 900 ===== */
+@media(max-width:900px){
+  .safety-strip{
+    margin-left:28px;
+    margin-right:28px;
+  }
+}
+
+/* ===== RESPONSIVE 620 ===== */
+@media(max-width:620px){
+  .safety-strip{
+    margin:0 22px 45px;
+    padding:18px 18px;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:14px;
+    box-shadow:4px 4px 0 var(--ink);
+  }
+  .safety-strip::after{
+    width:52px;
+    height:52px;
+    top:-8px;
+    right:-8px;
+  }
+  .shield{
+    width:42px;
+    height:46px;
+    font-size:22px;
+    transform:rotate(-3deg);
+  }
+  .safety-strip strong{
+    font-size:16px;
+    letter-spacing:1.2px;
+  }
+  .safety-strip p{
+    font-size:11px;
+    line-height:1.5;
+  }
+  .safe-tag{
+    display:inline-block;
+    margin-left:0;
+    font-size:11px;
+    padding:6px 10px;
+    transform:rotate(-2deg);
+  }
+}
 footer{width:100%;max-width:100vw;border-top:2px solid var(--ink);padding:24px clamp(20px,6vw,92px);display:flex;align-items:center;justify-content:space-between;gap:15px;font-size:8px;letter-spacing:1.2px;font-weight:800;color:#69707d}
 .footer-brand{color:var(--ink);font-size:13px}
 .footer-brand .brand-mark{width:32px;height:32px;font-size:23px}
