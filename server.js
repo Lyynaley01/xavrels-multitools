@@ -67,45 +67,76 @@ const upload = multer({
 const MASTER_API_KEY = process.env.MASTER_API_KEY || "";
 if (!MASTER_API_KEY) console.warn("⚠️  MASTER_API_KEY belum di-set.");
 
-const sessionStore = new Map();
+/* ============================================================
+   SIGNED SESSION TOKEN (Stateless — works on serverless)
+   ============================================================ */
+const SESSION_SECRET = process.env.SESSION_SECRET || "";
+if (!SESSION_SECRET) {
+  console.warn("⚠️  SESSION_SECRET belum di-set — fallback ke random per-process (session gak akan persisten!)");
+}
+const ACTIVE_SESSION_SECRET = SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+
 const SESSION_TTL_MS = 10 * 60 * 1000;
-const SESSION_MAX_USES = 10;
 
-function pruneSessions() {
-  const now = Date.now();
-  for (const [token, data] of sessionStore.entries()) {
-    if (data.expiresAt < now || data.used > SESSION_MAX_USES) sessionStore.delete(token);
-  }
-}
-setInterval(pruneSessions, 5 * 60 * 1000);
-
-function createSession(req) {
-  const token = crypto.randomBytes(32).toString("hex");
-  sessionStore.set(token, {
-    createdAt: Date.now(),
-    expiresAt: Date.now() + SESSION_TTL_MS,
+/**
+ * Format token: base64url(payload).hex(signature)
+ * payload: { ip, ua, exp }
+ */
+function createSignedToken(req) {
+  const payload = {
     ip: req.ip || "unknown",
-    ua: (req.headers["user-agent"] || "").slice(0, 200),
-    used: 0
-  });
-  return token;
+    ua: (req.headers["user-agent"] || "").slice(0, 60),
+    exp: Date.now() + SESSION_TTL_MS
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", ACTIVE_SESSION_SECRET)
+    .update(payloadB64)
+    .digest("hex");
+  return `${payloadB64}.${signature}`;
 }
 
-function validateSession(req) {
-  const token = req.headers["x-session-token"];
-  if (!token) return { ok: false, reason: "Token tidak ada" };
-  const session = sessionStore.get(token);
-  if (!session) return { ok: false, reason: "Token tidak valid" };
-  if (session.expiresAt < Date.now()) {
-    sessionStore.delete(token);
+function validateSignedToken(req) {
+  const token = req.headers["x-session-token"] || req.query?.token;
+  if (!token || typeof token !== "string") return { ok: false, reason: "Token tidak ada" };
+
+  const parts = token.split(".");
+  if (parts.length !== 2) return { ok: false, reason: "Format token salah" };
+
+  const [payloadB64, signature] = parts;
+
+  // Verify signature
+  const expectedSig = crypto
+    .createHmac("sha256", ACTIVE_SESSION_SECRET)
+    .update(payloadB64)
+    .digest("hex");
+
+  if (signature.length !== expectedSig.length) return { ok: false, reason: "Signature tidak valid" };
+  try {
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+      return { ok: false, reason: "Signature tidak valid" };
+    }
+  } catch { return { ok: false, reason: "Signature tidak valid" }; }
+
+  // Decode payload
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+  } catch { return { ok: false, reason: "Payload corrupt" }; }
+
+  // Check expiry
+  if (!payload.exp || Date.now() > payload.exp) {
     return { ok: false, reason: "Token expired" };
   }
-  session.used = (session.used || 0) + 1;
-  if (session.used > SESSION_MAX_USES) {
-    sessionStore.delete(token);
-    return { ok: false, reason: "Token overused" };
+
+  // Optional: cek IP (bisa dimatiin kalau mobile user sering ganti IP)
+  const currentIp = req.ip || "unknown";
+  if (payload.ip && payload.ip !== currentIp && payload.ip !== "unknown") {
+    // ⚠️ Kalau mau strict, uncomment baris di bawah:
+    // return { ok: false, reason: "IP tidak cocok" };
   }
-  return { ok: true, session };
+
+  return { ok: true, payload };
 }
 
 function validateMasterKey(req) {
@@ -121,16 +152,12 @@ function validateMasterKey(req) {
 function requireAuth(req, res, next) {
   if (validateMasterKey(req)) { req.authMode = "master"; return next(); }
 
-  // Support token dari query string juga (buat <audio>, <img>, dll yang gak bisa kirim header)
-  let sessionResult = validateSession(req);
-  if (!sessionResult.ok) {
-    const queryToken = req.query?.token;
-    if (queryToken && typeof queryToken === "string") {
-      const fakeReq = { headers: { "x-session-token": queryToken } };
-      sessionResult = validateSession(fakeReq);
-    }
+  const sessionResult = validateSignedToken(req);
+  if (sessionResult.ok) {
+    req.authMode = "session";
+    req.session = sessionResult.payload;
+    return next();
   }
-  if (sessionResult.ok) { req.authMode = "session"; req.session = sessionResult.session; return next(); }
 
   return res.status(401).json({
     ok: false,
@@ -264,16 +291,8 @@ app.post("/api/session", (req, res) => {
       return res.status(403).json({ ok: false, error: "Origin tidak diizinkan." });
     }
 
-    const ip = req.ip || "unknown";
-    const now = Date.now();
-    const recentCount = Array.from(sessionStore.values())
-      .filter(s => s.ip === ip && (now - s.createdAt) < 60_000).length;
 
-    if (recentCount >= 10) {
-      return res.status(429).json({ ok: false, error: "Terlalu banyak session. Coba lagi nanti." });
-    }
-
-    const token = createSession(req);
+    const token = createSignedToken(req);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
