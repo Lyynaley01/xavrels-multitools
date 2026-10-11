@@ -272,6 +272,7 @@ document.addEventListener("paste", (e) => {
 
 
 /* ===== Input mode tabs ===== */
+/* ===== Input mode tabs ===== */
 function switchInputMode(mode) {
   inputMode = mode;
   $$(".input-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mode === mode));
@@ -279,7 +280,21 @@ function switchInputMode(mode) {
   // FPRESET pakai 2 mode: url = link video, upload = search keyword
   if (activeTool === "fpreset") {
     const info = toolInfo.fpreset;
+    const urlTab = document.querySelector('.input-tab[data-mode="url"]');
+    const uploadTab = document.querySelector('.input-tab[data-mode="upload"]');
+
     if (mode === "url") {
+      // Tab 1: PAKAI LINK (untuk paste link TikTok)
+      if (urlTab) {
+        urlTab.querySelector(".tab-icon").textContent = "🔗";
+        urlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
+      }
+      // Tab 2: CARI KEYWORD (bukan upload file)
+      if (uploadTab) {
+        uploadTab.querySelector(".tab-icon").textContent = "🔍";
+        uploadTab.querySelector(".tab-text").textContent = "CARI KEYWORD";
+      }
+
       if (modeUrl) modeUrl.hidden = false;
       if (modeUpload) modeUpload.hidden = true;
       $("#inputLabel").textContent = info.label;
@@ -287,9 +302,18 @@ function switchInputMode(mode) {
       input.type = "url";
       submitLabel.textContent = info.button;
     } else {
+      // Tab tetap sama labelnya
+      if (urlTab) {
+        urlTab.querySelector(".tab-icon").textContent = "🔗";
+        urlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
+      }
+      if (uploadTab) {
+        uploadTab.querySelector(".tab-icon").textContent = "🔍";
+        uploadTab.querySelector(".tab-text").textContent = "CARI KEYWORD";
+      }
+
       if (modeUrl) modeUrl.hidden = true;
       if (modeUpload) modeUpload.hidden = true; // fpreset gak pakai upload file
-      // Tampilkan mode search: pakai input URL, tapi label & placeholder beda
       if (modeUrl) modeUrl.hidden = false;
       $("#inputLabel").textContent = "Keyword pencarian video";
       input.placeholder = "contoh: JJ kicau mania";
@@ -298,6 +322,18 @@ function switchInputMode(mode) {
     }
     clearResult();
     return;
+  }
+
+  // ===== RESET LABEL TAB KE DEFAULT (buat tool lain: HD, Remove BG, dll) =====
+  const urlTab = document.querySelector('.input-tab[data-mode="url"]');
+  const uploadTab = document.querySelector('.input-tab[data-mode="upload"]');
+  if (urlTab) {
+    urlTab.querySelector(".tab-icon").textContent = "🔗";
+    urlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
+  }
+  if (uploadTab) {
+    uploadTab.querySelector(".tab-icon").textContent = "📁";
+    uploadTab.querySelector(".tab-text").textContent = "UPLOAD FILE";
   }
 
   if (mode === "url") {
@@ -1950,6 +1986,19 @@ function openTool(key, updateHistory = true) {
   input.autocomplete = info.inputType === "url" ? "url" : "off";
 
   clearSelectedFile();
+
+// Reset label tab ke default sebelum masuk mode
+const resetUrlTab = document.querySelector('.input-tab[data-mode="url"]');
+const resetUploadTab = document.querySelector('.input-tab[data-mode="upload"]');
+if (resetUrlTab) {
+  resetUrlTab.querySelector(".tab-icon").textContent = "🔗";
+  resetUrlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
+}
+if (resetUploadTab) {
+  resetUploadTab.querySelector(".tab-icon").textContent = "📁";
+  resetUploadTab.querySelector(".tab-text").textContent = "UPLOAD FILE";
+}
+
 if (info.supportsUpload) {
   if (inputTabs) inputTabs.hidden = false;
   switchInputMode("url");

@@ -2447,3 +2447,19 @@ footer>span:nth-child(2){order:3;width:100%}
     letter-spacing: 0.4px;
   }
 }
+/* ===== Tab text & icon spacing ===== */
+.input-tab .tab-text {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@media (max-width: 400px) {
+  .input-tab {
+    font-size: 8px;
+    padding: 10px 6px;
+    gap: 4px;
+  }
+  .tab-icon {
+    font-size: 12px;
+  }
+}
