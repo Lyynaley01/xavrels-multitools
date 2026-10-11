@@ -537,13 +537,13 @@ function renderPinterest(data) {
     const overlay = document.createElement("div");
     overlay.className = "pin-result-overlay";
 
-    const caption = document.createElement("span");
-    caption.className = "pin-result-caption";
-    caption.textContent = item.title || `Visual ${index + 1}`;
+    const caption = document.createElement("div");
+caption.className = "pin-result-caption";
+caption.textContent = item.title || `Visual ${index + 1}`;
 
-    const zoom = document.createElement("span");
-    zoom.className = "pin-result-zoom";
-    zoom.textContent = "🔍";
+const zoom = document.createElement("div");
+zoom.className = "pin-result-zoom";
+zoom.textContent = "🔍";
 
     overlay.append(caption, zoom);
     btn.append(img, overlay);
