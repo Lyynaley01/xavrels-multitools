@@ -2995,66 +2995,114 @@ footer>span:nth-child(2){order:3;width:100%}
 }
 
 /* =========================================================
-   RANDOM CECAN — Custom Tool UI
+   RANDOM CECAN — Custom Tool UI v2
    ========================================================= */
 .cecan-custom-ui {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 14px;
 }
 
 .cecan-label {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.3px;
-  margin: 0;
-}
-
-.cecan-country-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.cecan-country-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  background: #fff;
-  border: 1.5px solid #cfd2d9;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--ink);
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-}
-.cecan-country-btn:hover {
-  border-color: var(--ink);
-  transform: translateY(-1px);
-  box-shadow: 3px 3px 0 var(--ink);
-}
-.cecan-country-btn.active {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-  box-shadow: 3px 3px 0 var(--red);
-}
-.cecan-flag {
-  font-size: 20px;
-  line-height: 1;
-}
-.cecan-name {
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.4px;
+  color: var(--ink);
+  margin: 0;
+  display: block;
 }
 
+/* ── Grid negara ── */
+.cecan-country-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cecan-country-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+  background: #fff;
+  border: 2px solid #cfd2d9;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  font-family: inherit;
+  color: var(--ink);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 2px 2px 0 #cfd2d9;
+}
+.cecan-country-btn:hover {
+  border-color: var(--ink);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.cecan-country-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.cecan-country-btn.active {
+  background: linear-gradient(135deg, #fff5f7, #ffe7ec);
+  border-color: var(--red);
+  box-shadow: 4px 4px 0 var(--red);
+}
+.cecan-country-btn.active .cecan-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.cecan-flag {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.cecan-country-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cecan-name {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.cecan-desc {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.2px;
+}
+
+.cecan-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+/* ── Tombol GACHA ── */
 .cecan-gacha-btn {
   display: flex;
   align-items: center;
@@ -3068,11 +3116,24 @@ footer>span:nth-child(2){order:3;width:100%}
   font-family: inherit;
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.1px;
   cursor: pointer;
   box-shadow: 5px 5px 0 var(--ink);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.2s;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.cecan-gacha-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+.cecan-gacha-btn:hover:not(:disabled)::before {
+  transform: translateX(100%);
 }
 .cecan-gacha-btn:hover:not(:disabled) {
   transform: translate(2px, 2px);
@@ -3083,15 +3144,34 @@ footer>span:nth-child(2){order:3;width:100%}
   box-shadow: 1px 1px 0 var(--ink);
 }
 .cecan-gacha-btn:disabled {
-  opacity: 0.7;
-  cursor: wait;
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: linear-gradient(135deg, #9ca3af, #6b7280);
+  box-shadow: 3px 3px 0 #4b5563;
 }
 .cecan-gacha-icon {
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
 }
+.cecan-gacha-text {
+  flex: 1 1 auto;
+  text-align: center;
+}
+.cecan-gacha-arrow {
+  font-size: 16px;
+}
 
-/* ==== Result ==== */
+/* ── Hint ── */
+.cecan-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+}
+
+/* ── Result Card ── */
 .cecan-result-card {
   display: flex;
   flex-direction: column;
@@ -3100,7 +3180,9 @@ footer>span:nth-child(2){order:3;width:100%}
   background: #fff;
   border-radius: 12px;
   animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: 0 4px 12px rgba(23,27,43,0.06);
 }
+
 .cecan-result-image-wrap {
   position: relative;
   display: grid;
@@ -3108,16 +3190,30 @@ footer>span:nth-child(2){order:3;width:100%}
   min-height: 200px;
   max-height: 520px;
   padding: 12px;
-  background: #f2f4f7;
+  background:
+    linear-gradient(45deg, #f0f0f3 25%, transparent 25%),
+    linear-gradient(-45deg, #f0f0f3 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0f0f3 75%),
+    linear-gradient(-45deg, transparent 75%, #f0f0f3 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-color: #fafafb;
 }
+
 .cecan-result-img {
   display: block;
   max-width: 100%;
   max-height: 500px;
   object-fit: contain;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  animation: cecanImgEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+@keyframes cecanImgEnter {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
 .cecan-result-meta {
   display: flex;
   flex-direction: column;
@@ -3130,14 +3226,18 @@ footer>span:nth-child(2){order:3;width:100%}
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 .cecan-result-info strong {
   font-size: 12px;
   font-weight: 900;
+  color: var(--ink);
 }
 .cecan-result-info span {
   font-size: 10px;
   color: var(--muted);
+  font-weight: 600;
+  line-height: 1.5;
 }
 .cecan-result-actions {
   display: flex;
@@ -3145,13 +3245,11 @@ footer>span:nth-child(2){order:3;width:100%}
 }
 .cecan-result-actions .download-btn {
   flex: 1;
+  padding: 12px;
+  font-size: 10px;
 }
 
-/* ==== Art untuk card ==== */
-.art-cecan {
-  background-color: #ef7a91;
-}
-
+/* ── Responsive ── */
 @media (min-width: 621px) {
   .cecan-result-meta {
     flex-direction: row;
@@ -3160,21 +3258,32 @@ footer>span:nth-child(2){order:3;width:100%}
   }
   .cecan-result-actions .download-btn {
     flex: 0 0 auto;
-    min-width: 160px;
+    min-width: 180px;
   }
 }
 
 @media (max-width: 620px) {
   .cecan-country-grid {
-    gap: 6px;
+    gap: 8px;
   }
   .cecan-country-btn {
-    padding: 10px 12px;
+    padding: 12px 10px;
+    gap: 8px;
+    border-radius: 10px;
   }
-  .cecan-flag { font-size: 18px; }
-  .cecan-name { font-size: 10px; }
+  .cecan-flag { font-size: 22px; }
+  .cecan-name { font-size: 12px; }
+  .cecan-desc { font-size: 8px; }
   .cecan-gacha-btn {
     font-size: 11px;
     padding: 14px 16px;
+    letter-spacing: 0.8px;
   }
+  .cecan-gacha-icon { font-size: 18px; }
+  .cecan-hint { font-size: 9px; }
+}
+
+/* ── Art card untuk grid tool ── */
+.art-cecan {
+  background-color: #ef7a91;
 }

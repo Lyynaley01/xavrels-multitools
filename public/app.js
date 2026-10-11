@@ -157,15 +157,15 @@ const toolInfo = {
     supportsModeSwitch: true
   },
   "random-cecan": {
-    title: "RANDOM CECAN", titleLead: "RANDOM", titleAccent: "CECAN", issue: "TOOL 07", number: "07",
-    category: "FUN LAB", icon: "🌸",
-    description: "Gacha foto cewek cantik dari berbagai negara secara random.",
-    tip: "Pilih negara dulu, lalu klik GACHA untuk dapat foto random.",
-    label: "Pilih negara", placeholder: "", inputType: "text",
-    endpoint: "api/random-cecan", button: "GACHA FOTO",
-    supportsUpload: false,
-    isCustomTool: "random-cecan" // ← flag khusus, biar render-nya beda
-  }
+  title: "RANDOM CECAN", titleLead: "RANDOM", titleAccent: "CECAN", issue: "TOOL 07", number: "07",
+  category: "FUN LAB", icon: "🌸",
+  description: "Gacha foto cewek cantik dari berbagai negara secara random.",
+  tip: "Pilih negara dulu, lalu klik GACHA untuk dapat foto random.",
+  label: "Pilih negara", placeholder: "", inputType: "text",
+  endpoint: "api/random-cecan", button: "GACHA FOTO",
+  supportsUpload: false,
+  isCustomTool: "random-cecan"
+}
 };
 
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
@@ -1587,113 +1587,149 @@ function renderFpresetSearch(data) {
 }
 
 /* =========================================================
-   RANDOM CECAN — Custom Tool UI
+   RANDOM CECAN — Custom UI (v2: replace total form)
    ========================================================= */
 const CECAN_COUNTRIES = [
-  { key: "china",     label: "China",     flag: "🇨🇳" },
-  { key: "japan",     label: "Jepang",    flag: "🇯🇵" },
-  { key: "korea",     label: "Korea",     flag: "🇰🇷" },
-  { key: "indonesia", label: "Indonesia", flag: "🇮🇩" },
+  { key: "china",     label: "China",     flag: "🇨🇳", desc: "Cewek China" },
+  { key: "japan",     label: "Jepang",    flag: "🇯🇵", desc: "Cewek Jepang" },
+  { key: "korea",     label: "Korea",     flag: "🇰🇷", desc: "Cewek Korea" },
+  { key: "indonesia", label: "Indonesia", flag: "🇮🇩", desc: "Cewek Indonesia" },
 ];
 
-let selectedCecanCountry = "china"; // default
+let selectedCecanCountry = null;
 
-function renderRandomCecanTool() {
-  // Hide input modes (URL/Upload)
-  if (inputTabs) inputTabs.hidden = true;
-  if (modeUrl) modeUrl.hidden = true;
-  if (modeUpload) modeUpload.hidden = true;
-
-  const form = $("#toolForm");
-  const inputMode = $("#modeUrl"); // dummy
-  const label = $("#inputLabel");
-
-  // Hide label & input default
-  if (label) label.parentElement.hidden = true;
-
-  // Cari wrapper form
+function renderRandomCecanUI() {
   const formEl = document.getElementById("toolForm");
-  if (!formEl) return;
+  if (!formEl) {
+    console.error("[RANDOM-CECAN] #toolForm gak ketemu");
+    return;
+  }
 
-  // Hapus field tambahan yang lama (kalau ada)
-  const oldCustom = document.getElementById("cecanCustomUI");
-  if (oldCustom) oldCustom.remove();
+  // ── Reset state ──
+  selectedCecanCountry = null;
 
-  // Bikin UI custom
+  // ── Replace total isi form ──
+  formEl.replaceChildren();
+
+  // ── Wrapper ──
   const wrap = document.createElement("div");
   wrap.id = "cecanCustomUI";
   wrap.className = "cecan-custom-ui";
-  wrap.innerHTML = `
-    <label class="cecan-label">Pilih negara cewek:</label>
-    <div class="cecan-country-grid">
-      ${CECAN_COUNTRIES.map(c => `
-        <button
-          type="button"
-          class="cecan-country-btn ${c.key === selectedCecanCountry ? "active" : ""}"
-          data-country="${c.key}">
-          <span class="cecan-flag">${c.flag}</span>
-          <span class="cecan-name">${c.label}</span>
-        </button>
-      `).join("")}
-    </div>
-    <button type="button" class="cecan-gacha-btn" id="cecanGachaBtn">
-      <span class="cecan-gacha-icon">🎲</span>
-      <span>GACHA FOTO</span>
-    </button>
-  `;
 
-  // Insert sebelum submit button
-  const submitBtn = document.getElementById("submitBtn");
-  if (submitBtn) {
-    formEl.insertBefore(wrap, submitBtn);
-  } else {
-    formEl.append(wrap);
-  }
+  // ── Label ──
+  const label = document.createElement("label");
+  label.className = "cecan-label";
+  label.textContent = "Pilih negara cewek:";
+  wrap.append(label);
 
-  // Sembunyiin submit button default (karena kita pake tombol GACHA custom)
-  if (submitBtn) submitBtn.hidden = true;
+  // ── Grid negara ──
+  const grid = document.createElement("div");
+  grid.className = "cecan-country-grid";
 
-  // Attach event: pilih negara
-  wrap.querySelectorAll(".cecan-country-btn").forEach(btn => {
+  CECAN_COUNTRIES.forEach(c => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cecan-country-btn";
+    btn.dataset.country = c.key;
+    btn.innerHTML = `
+      <span class="cecan-flag">${c.flag}</span>
+      <span class="cecan-country-info">
+        <span class="cecan-name">${c.label}</span>
+        <span class="cecan-desc">${c.desc}</span>
+      </span>
+      <span class="cecan-check">✓</span>
+    `;
     btn.addEventListener("click", () => {
-      wrap.querySelectorAll(".cecan-country-btn").forEach(b => b.classList.remove("active"));
+      // Clear active state
+      grid.querySelectorAll(".cecan-country-btn").forEach(b => b.classList.remove("active"));
+      // Set active
       btn.classList.add("active");
-      selectedCecanCountry = btn.dataset.country;
+      selectedCecanCountry = c.key;
+      // Enable gacha button
+      if (gachaBtn) gachaBtn.disabled = false;
       console.log("[RANDOM-CECAN] Selected:", selectedCecanCountry);
     });
+    grid.append(btn);
+  });
+  wrap.append(grid);
+
+  // ── Tombol GACHA ──
+  const gachaBtn = document.createElement("button");
+  gachaBtn.type = "button";
+  gachaBtn.className = "cecan-gacha-btn";
+  gachaBtn.disabled = true; // disable dulu sampai user pilih negara
+  gachaBtn.innerHTML = `
+    <span class="cecan-gacha-icon">🎲</span>
+    <span class="cecan-gacha-text">PILIH NEGARA DULU</span>
+    <span class="cecan-gacha-arrow">↗</span>
+  `;
+  gachaBtn.addEventListener("click", () => {
+    if (!selectedCecanCountry) return;
+    runRandomCecanGacha(gachaBtn);
+  });
+  wrap.append(gachaBtn);
+
+  // ── Hint ──
+  const hint = document.createElement("p");
+  hint.className = "cecan-hint";
+  hint.textContent = "💡 Pilih negara dulu, lalu klik GACHA untuk dapat foto random.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // Update gacha button text saat negara dipilih
+  const updateGachaBtn = () => {
+    const cfg = CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry);
+    if (cfg) {
+      gachaBtn.disabled = false;
+      gachaBtn.innerHTML = `
+        <span class="cecan-gacha-icon">🎲</span>
+        <span class="cecan-gacha-text">GACHA FOTO ${cfg.flag} ${cfg.label.toUpperCase()}</span>
+        <span class="cecan-gacha-arrow">↗</span>
+      `;
+    } else {
+      gachaBtn.disabled = true;
+      gachaBtn.innerHTML = `
+        <span class="cecan-gacha-icon">🎲</span>
+        <span class="cecan-gacha-text">PILIH NEGARA DULU</span>
+        <span class="cecan-gacha-arrow">↗</span>
+      `;
+    }
+  };
+
+  // Hook: tiap klik negara, update gacha text
+  grid.querySelectorAll(".cecan-country-btn").forEach(btn => {
+    btn.addEventListener("click", updateGachaBtn);
   });
 
-  // Attach event: gacha
-  const gachaBtn = document.getElementById("cecanGachaBtn");
-  if (gachaBtn) {
-    gachaBtn.addEventListener("click", () => runRandomCecanGacha(gachaBtn));
-  }
-
-  // Clear result area
-  clearResult();
-
-  console.log("[RANDOM-CECAN] Tool ready, selected:", selectedCecanCountry);
+  console.log("[RANDOM-CECAN] UI rendered");
 }
 
 /* =========================================================
    RANDOM CECAN — Execute Gacha
    ========================================================= */
 async function runRandomCecanGacha(btnEl) {
+  if (!selectedCecanCountry) return;
+
+  const cfg = CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry);
+
   if (btnEl) {
     btnEl.disabled = true;
-    btnEl.innerHTML = `<span class="cecan-gacha-icon">⏳</span><span>MENCARI CEWEK ${CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry)?.label.toUpperCase()}...</span>`;
+    btnEl.innerHTML = `
+      <span class="cecan-gacha-icon">⏳</span>
+      <span class="cecan-gacha-text">MENGAMBIL FOTO ${cfg?.label?.toUpperCase() || ""}...</span>
+      <span class="cecan-gacha-arrow">⏳</span>
+    `;
   }
 
   resultShell.hidden = false;
   resultArea.replaceChildren();
-
-  // Loading
   showMessage("Sedang mengambil foto random... ✨", "loading");
 
   try {
     const token = await ensureSession();
-
     const url = `/api/random-cecan?country=${encodeURIComponent(selectedCecanCountry)}`;
+
     let response = await fetch(url, {
       method: "GET",
       headers: { "X-Session-Token": token },
@@ -1719,25 +1755,21 @@ async function runRandomCecanGacha(btnEl) {
       throw new Error(message);
     }
 
-    // Response binary image
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);
 
-    // Simpan reference
     if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
     activeObjectUrl = objectUrl;
 
-    const cfg = CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry);
-
-    // Render result
+    // ── Render Result ──
     resultArea.replaceChildren();
     resultShell.hidden = false;
 
     const card = document.createElement("article");
     card.className = "cecan-result-card";
 
-    const wrap = document.createElement("div");
-    wrap.className = "cecan-result-image-wrap";
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "cecan-result-image-wrap";
 
     const img = document.createElement("img");
     img.className = "cecan-result-img";
@@ -1745,23 +1777,30 @@ async function runRandomCecanGacha(btnEl) {
     img.alt = `Random Cecan ${cfg?.label || ""}`;
     img.loading = "lazy";
 
-    wrap.append(img);
+    imageWrap.append(img);
 
     const meta = document.createElement("div");
     meta.className = "cecan-result-meta";
-    meta.innerHTML = `
-      <div class="cecan-result-info">
-        <strong>${cfg?.flag || "🌸"} Random Cecan — ${cfg?.label || "Unknown"}</strong>
-        <span>Foto random berhasil didapat!</span>
-      </div>
-      <div class="cecan-result-actions">
-        <a class="download-btn" href="${objectUrl}" download="xavrels-cecan-${cfg?.key || "unknown"}-${Date.now()}.jpg">
-          ↓ SIMPAN FOTO
-        </a>
-      </div>
+
+    const info = document.createElement("div");
+    info.className = "cecan-result-info";
+    info.innerHTML = `
+      <strong>${cfg?.flag || "🌸"} Random Cecan — ${cfg?.label || "Unknown"}</strong>
+      <span>Foto random berhasil didapat! Klik gacha lagi untuk foto berbeda.</span>
     `;
 
-    card.append(wrap, meta);
+    const actions = document.createElement("div");
+    actions.className = "cecan-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-cecan-${cfg?.key || "unknown"}-${Date.now()}.jpg`;
+    download.textContent = "↓ SIMPAN FOTO";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(imageWrap, meta);
     resultArea.append(card);
 
     const note = $("#resultHeadingNote");
@@ -1771,29 +1810,18 @@ async function runRandomCecanGacha(btnEl) {
     console.error("[RANDOM-CECAN] Error:", err.message);
     showMessage(err.message || "Gagal mengambil foto. Coba lagi.", "error");
   } finally {
+    // Reset tombol gacha ke state awal
     if (btnEl) {
+      const cfg2 = CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry);
       btnEl.disabled = false;
-      btnEl.innerHTML = `<span class="cecan-gacha-icon">🎲</span><span>GACHA FOTO</span>`;
+      btnEl.innerHTML = `
+        <span class="cecan-gacha-icon">🎲</span>
+        <span class="cecan-gacha-text">GACHA FOTO ${cfg2?.flag || ""} ${cfg2?.label?.toUpperCase() || ""}</span>
+        <span class="cecan-gacha-arrow">↗</span>
+      `;
     }
   }
 }
-
-// Pastikan saat pindah tool lain, custom UI dibersihin
-const _originalClearResult = clearResult;
-clearResult = function() {
-  const custom = document.getElementById("cecanCustomUI");
-  if (custom) custom.remove();
-
-  // Balikin submit button visibility
-  const submitBtn = document.getElementById("submitBtn");
-  if (submitBtn) submitBtn.hidden = false;
-
-  // Balikin label & input
-  const label = document.getElementById("inputLabel");
-  if (label && label.parentElement) label.parentElement.hidden = false;
-
-  _originalClearResult.apply(this, arguments);
-};
 
 
 /* =========================================================
@@ -2183,6 +2211,41 @@ function openTool(key, updateHistory = true) {
   homeView.hidden = true;
   toolView.hidden = false;
   document.body.classList.add("tool-page-active");
+
+  // ═══════════════════════════════════════════════
+  // SPECIAL TOOL: RANDOM CECAN — Custom UI
+  // Setup umum (title, description, dll) tetep jalan,
+  // tapi form di-replace total dengan UI custom.
+  // ═══════════════════════════════════════════════
+  if (key === "random-cecan") {
+    // Setup header info
+    $("#workspaceIssue").textContent = info.issue;
+    $("#workspaceIcon").textContent = info.icon;
+    $("#workspaceCategory").textContent = info.category;
+    
+    const titleEl = $("#workspaceTitle");
+    titleEl.replaceChildren();
+    const lead = document.createElement("span"); lead.textContent = info.titleLead;
+    const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+    titleEl.append(lead, document.createTextNode(" "), accent);
+
+    $("#workspaceDescription").textContent = info.description;
+    $("#workspaceTip").textContent = info.tip;
+    $("#panelNumber").textContent = info.number;
+
+    // Render custom UI
+    renderRandomCecanUI();
+
+    clearResult();
+    fpresetSearchState = null;
+    fpresetInDetailView = false;
+    document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+    if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
 
   $("#workspaceIssue").textContent = info.issue;
 $("#workspaceIcon").textContent = info.icon;
