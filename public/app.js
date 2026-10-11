@@ -1030,8 +1030,13 @@ if (item.audio) {
 }
 
 /* =========================================================
-   RENDER FPRESET — Alight Motion Preset Finder
+   RENDER FPRESET INTO — wrapper biar bisa render ke container manapun
    ========================================================= */
+function renderFpresetInto(container, data) {
+  renderFpreset(data, container);
+}
+
+
 /* =========================================================
    RENDER FPRESET — Alight Motion Preset Finder
    ========================================================= */
@@ -1558,17 +1563,15 @@ async function findPresetFromVideo(videoUrl, cardEl) {
 
     // Hapus loading, render detail preset (pakai renderFpreset yang udah ada)
     // Tapi kita render ke dalam detailWrap, biar tombol back tetap ada di atas
-    const presetContainer = document.createElement("div");
-    presetContainer.className = "fpreset-detail-content";
+    // Hapus loading, render detail preset
+const presetContainer = document.createElement("div");
+presetContainer.className = "fpreset-detail-content";
 
-    // Render preset ke container sementara
-    const originalResultArea = resultArea;
-    // Trick: render ke container preset
-    renderFpresetInto(presetContainer, data);
+renderFpresetInto(presetContainer, data);
 
-    // Clear detailWrap & append fresh
-    detailWrap.replaceChildren();
-    detailWrap.append(backBtn, presetContainer);
+// Clear detailWrap & append fresh (tombol back tetap di atas)
+detailWrap.replaceChildren();
+detailWrap.append(backBtn, presetContainer);
 
     // Balikin state card (di grid belakang)
     if (cardEl) {
