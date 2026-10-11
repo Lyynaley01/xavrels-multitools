@@ -616,56 +616,59 @@ function renderMusic(data) {
   card.append(hero);
 
   /* ===== HTML5 Audio Player ===== */
-  if (item.audio) {
+if (item.audio) {
   const playerWrap = document.createElement("div");
   playerWrap.className = "music-player";
   card.append(playerWrap);
+
+  // Placeholder loading
+  const loadingText = document.createElement("div");
+  loadingText.className = "music-player-loading";
+  loadingText.textContent = "⏳ Menyiapkan audio...";
+  playerWrap.append(loadingText);
 
   const audio = document.createElement("audio");
   audio.controls = true;
   audio.preload = "metadata";
   audio.controlsList = "nodownload";
 
-  // Placeholder loading dulu
-  const loadingText = document.createElement("div");
-  loadingText.className = "music-player-loading";
-  loadingText.textContent = "⏳ Menyiapkan audio...";
-  playerWrap.append(loadingText);
-
-  // Async: pastikan sessionToken siap dulu, baru set src
+  // Async: pastikan session token valid dulu, baru set src
   (async () => {
     try {
       const token = await ensureSession();
+      console.log("[MUSIC] Token valid, set audio src");
       const streamUrl = `/api/stream?url=${encodeURIComponent(item.audio)}&token=${encodeURIComponent(token)}`;
-      console.log("[MUSIC] Setting audio src:", streamUrl.slice(0, 100) + "...");
       audio.src = streamUrl;
 
       audio.addEventListener("loadedmetadata", () => {
         console.log("[MUSIC] Audio metadata loaded ✅");
-        loadingText.remove();
-        playerWrap.append(audio);
+        if (loadingText.parentNode) loadingText.remove();
+        if (!audio.parentNode) playerWrap.append(audio);
+      });
+
+      audio.addEventListener("canplay", () => {
+        console.log("[MUSIC] Audio siap diputar ✅");
       });
 
       audio.addEventListener("error", (e) => {
-        console.error("[MUSIC] Audio error:", e, audio.error);
-        playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio tidak dapat diputar. Coba refresh halaman.</div>`;
+        console.error("[MUSIC] Audio error:", e, audio.error, "src:", audio.src);
+        playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio gagal diputar. Klik BUKA DI SPOTIFY di bawah.</div>`;
       });
 
-      // Fallback timeout — kalau 15 detik gak load, tampilkan audio langsung
+      // Fallback — tampilkan audio meski metadata belum ke-load
       setTimeout(() => {
         if (loadingText.parentNode) {
           loadingText.remove();
-          playerWrap.append(audio);
+          if (!audio.parentNode) playerWrap.append(audio);
         }
-      }, 15000);
+      }, 8000);
 
     } catch (err) {
-      console.error("[MUSIC] Gagal ambil session token:", err);
-      playerWrap.innerHTML = `<div class="music-player-error">🎵 Gagal menyiapkan audio: ${err.message}</div>`;
+      console.error("[MUSIC] Gagal ambil token:", err);
+      playerWrap.innerHTML = `<div class="music-player-error">🎵 ${err.message}</div>`;
     }
   })();
 }
-
   /* ===== Actions ===== */
   const actions = document.createElement("div");
   actions.className = "music-actions";
