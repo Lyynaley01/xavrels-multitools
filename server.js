@@ -18,9 +18,10 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:", "https://i.scdn.co"],
       connectSrc: ["'self'"],
       frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      mediaSrc: ["'self'", "https:", "blob:"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       upgradeInsecureRequests: []
@@ -39,9 +40,6 @@ app.use("/api/", rateLimit({
 app.use(express.static(path.join(__dirname, "public"), { etag: true, maxAge: "1h" }));
 
 
-/* ============================================================
-   HTTP CLIENT
-   ============================================================ */
 const http = axios.create({
   timeout: 60_000,
   maxRedirects: 3,
@@ -52,9 +50,6 @@ const http = axios.create({
 const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 
-/* ============================================================
-   MULTER
-   ============================================================ */
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -67,12 +62,10 @@ const upload = multer({
 
 
 /* ============================================================
-   AUTH SYSTEM — Session Token + Master API Key
+   AUTH
    ============================================================ */
 const MASTER_API_KEY = process.env.MASTER_API_KEY || "";
-if (!MASTER_API_KEY) {
-  console.warn("⚠️  MASTER_API_KEY belum di-set — akses private DIMATIKAN.");
-}
+if (!MASTER_API_KEY) console.warn("⚠️  MASTER_API_KEY belum di-set.");
 
 const sessionStore = new Map();
 const SESSION_TTL_MS = 10 * 60 * 1000;
@@ -81,9 +74,7 @@ const SESSION_MAX_USES = 30;
 function pruneSessions() {
   const now = Date.now();
   for (const [token, data] of sessionStore.entries()) {
-    if (data.expiresAt < now || data.used > SESSION_MAX_USES) {
-      sessionStore.delete(token);
-    }
+    if (data.expiresAt < now || data.used > SESSION_MAX_USES) sessionStore.delete(token);
   }
 }
 setInterval(pruneSessions, 5 * 60 * 1000);
@@ -103,20 +94,17 @@ function createSession(req) {
 function validateSession(req) {
   const token = req.headers["x-session-token"];
   if (!token) return { ok: false, reason: "Token tidak ada" };
-
   const session = sessionStore.get(token);
   if (!session) return { ok: false, reason: "Token tidak valid" };
   if (session.expiresAt < Date.now()) {
     sessionStore.delete(token);
     return { ok: false, reason: "Token expired" };
   }
-
   session.used = (session.used || 0) + 1;
   if (session.used > SESSION_MAX_USES) {
     sessionStore.delete(token);
     return { ok: false, reason: "Token overused" };
   }
-
   return { ok: true, session };
 }
 
@@ -127,22 +115,13 @@ function validateMasterKey(req) {
   if (provided.length !== MASTER_API_KEY.length) return false;
   try {
     return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(MASTER_API_KEY));
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 function requireAuth(req, res, next) {
-  if (validateMasterKey(req)) {
-    req.authMode = "master";
-    return next();
-  }
+  if (validateMasterKey(req)) { req.authMode = "master"; return next(); }
   const sessionResult = validateSession(req);
-  if (sessionResult.ok) {
-    req.authMode = "session";
-    req.session = sessionResult.session;
-    return next();
-  }
+  if (sessionResult.ok) { req.authMode = "session"; req.session = sessionResult.session; return next(); }
   return res.status(401).json({
     ok: false,
     error: "Akses ditolak. Butuh API key atau session token yang valid."
@@ -160,15 +139,12 @@ app.post("/api/session", (req, res) => {
     const host = req.headers.host || "";
 
     const allowedOrigins = [
-      `https://${host}`,
-      `http://${host}`,
-      "http://localhost:3000",
-      "http://127.0.0.1:3000"
+      `https://${host}`, `http://${host}`,
+      "http://localhost:3000", "http://127.0.0.1:3000"
     ];
 
     const isFromAllowedOrigin =
-      !origin ||
-      allowedOrigins.some(o => origin === o || referer.startsWith(o));
+      !origin || allowedOrigins.some(o => origin === o || referer.startsWith(o));
 
     if (!isFromAllowedOrigin) {
       console.log(`🚫 [/api/session] Origin ditolak: ${origin}`);
@@ -186,12 +162,7 @@ app.post("/api/session", (req, res) => {
 
     const token = createSession(req);
     res.set("Cache-Control", "no-store");
-    res.json({
-      ok: true,
-      token,
-      expiresIn: SESSION_TTL_MS / 1000
-    });
-
+    res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
   } catch (err) {
     console.error("❌ [/api/session]", err.message);
     res.status(500).json({ ok: false, error: "Gagal membuat session." });
@@ -214,17 +185,11 @@ function validatePublicHttpsUrl(raw) {
   if (u.username || u.password) throw new Error("URL dengan username/password tidak diizinkan.");
   const host = u.hostname.toLowerCase();
   if (
-    !host ||
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host === "127.0.0.1" ||
-    host === "::1" ||
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
+    !host || host === "localhost" || host.endsWith(".localhost") ||
+    host.endsWith(".local") || host === "127.0.0.1" || host === "::1" ||
+    /^10\./.test(host) || /^192\.168\./.test(host) ||
     /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    /^169\.254\./.test(host) ||
-    host === "0.0.0.0"
+    /^169\.254\./.test(host) || host === "0.0.0.0"
   ) {
     throw new Error("URL menuju host privat/lokal tidak diizinkan.");
   }
@@ -253,17 +218,11 @@ function requireImageResponse(response) {
 async function uploadImageToCdn(buffer, filename = "image.jpg") {
   const form = new FormData();
   form.append("file", buffer, { filename, contentType: "image/jpeg" });
-
   const res = await http.post(
     "https://cdnn.ikyyxd.my.id/api/upload.php",
     form,
-    {
-      headers: form.getHeaders(),
-      timeout: 60_000,
-      maxBodyLength: 12 * 1024 * 1024
-    }
+    { headers: form.getHeaders(), timeout: 60_000, maxBodyLength: 12 * 1024 * 1024 }
   );
-
   const cdnUrl = res.data?.url || res.data?.result?.url || res.data?.file;
   if (typeof cdnUrl !== "string" || !/^https?:\/\//i.test(cdnUrl)) {
     throw new Error("Gagal menyiapkan gambar (CDN tidak mengembalikan URL).");
@@ -273,7 +232,7 @@ async function uploadImageToCdn(buffer, filename = "image.jpg") {
 
 
 /* ============================================================
-   HEALTH & CONFIG
+   HEALTH
    ============================================================ */
 app.get("/api/health", (_req, res) =>
   res.json({ ok: true, name: "Xavrels MultiTools", status: "online" })
@@ -296,21 +255,17 @@ app.get("/api/config", (_req, res) => {
 app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
   try {
     let imageUrl;
-
     if (req.file) {
-      console.log(`📤 [HD] Upload file: ${req.file.originalname} (${req.file.size} bytes)`);
+      console.log(`📤 [HD] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
       imageUrl = await uploadImageToCdn(req.file.buffer, req.file.originalname || "upload.jpg");
       imageUrl = validatePublicHttpsUrl(imageUrl);
-      console.log(`📤 [HD] CDN URL: ${imageUrl}`);
     } else if (req.body?.url) {
       imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
-      console.log(`📤 [HD] Input URL: ${imageUrl}`);
     } else {
       throw new Error("Kirim url atau file image.");
     }
 
-    const apiUrl = "https://api.nexadev.my.id/api/upscale/";
-    const response = await http.get(apiUrl, {
+    const response = await http.get("https://api.nexadev.my.id/api/upscale/", {
       params: { url: imageUrl },
       responseType: "arraybuffer",
       timeout: 60_000,
@@ -328,7 +283,6 @@ app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.set("Content-Disposition", 'inline; filename="xavrels-hd.jpg"');
     res.send(buf);
-
   } catch (err) {
     console.error("❌ [/api/hd]", err.message);
     sendError(res, err);
@@ -342,9 +296,8 @@ app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
 app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res) => {
   try {
     let input;
-
     if (req.file) {
-      console.log(`📤 [RMBG] Upload file: ${req.file.originalname} (${req.file.size} bytes)`);
+      console.log(`📤 [RMBG] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
       input = req.file.buffer;
     } else if (req.body?.url) {
       const imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
@@ -359,12 +312,9 @@ app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res)
       throw new Error("Kirim url atau file image.");
     }
 
-    if (!input.length || input.length > 10 * 1024 * 1024) {
-      throw new Error("Gambar maksimal 10 MB.");
-    }
+    if (!input.length || input.length > 10 * 1024 * 1024) throw new Error("Gambar maksimal 10 MB.");
 
     const cdnUrl = await uploadImageToCdn(input, "upload.jpg");
-    console.log(`📤 [RMBG] CDN URL: ${cdnUrl}`);
 
     const result = await http.post(
       "https://www.dreamai.art/api/background-remover",
@@ -396,7 +346,6 @@ app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res)
     res.set("Content-Disposition", 'inline; filename="xavrels-remove-bg.png"');
     res.set("Cache-Control", "no-store");
     res.send(output);
-
   } catch (err) {
     console.error("❌ [/api/remove-bg]", err.message);
     sendError(res, err);
@@ -423,11 +372,7 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
     const seen = new Set();
     const results = (Array.isArray(response.data.results) ? response.data.results : [])
       .filter(x => typeof x?.image_url === "string" && /^https:\/\/[^ ]+/i.test(x.image_url))
-      .filter(x => {
-        if (seen.has(x.image_url)) return false;
-        seen.add(x.image_url);
-        return true;
-      })
+      .filter(x => { if (seen.has(x.image_url)) return false; seen.add(x.image_url); return true; })
       .slice(0, 12)
       .map(x => ({
         image_url: x.image_url,
@@ -436,7 +381,6 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
       }));
 
     res.json({ ok: true, results });
-
   } catch (err) {
     console.error("❌ [/api/pinterest]", err.message);
     sendError(res, err);
@@ -445,7 +389,7 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
 
 
 /* ============================================================
-   /api/spotify — pakai provider ikyyxd + extract videoId
+   /api/spotify — pakai Nexadev (metadata lengkap + mp3_url)
    ============================================================ */
 app.post("/api/spotify", requireAuth, async (req, res) => {
   try {
@@ -453,68 +397,38 @@ app.post("/api/spotify", requireAuth, async (req, res) => {
     if (q.length < 2) throw new Error("Masukkan judul lagu atau artis.");
 
     const response = await http.get(
-      "https://api.ikyyxd.my.id/search/ytplayv3",
+      "https://api.nexadev.my.id/api/spotifyplay",
       {
         params: { q },
         timeout: 60_000,
         headers: {
           "User-Agent": BROWSER_UA,
-          "Accept": "application/json, text/plain, */*"
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+          "Referer": "https://api.nexadev.my.id/",
+          "Origin": "https://api.nexadev.my.id"
         }
       }
     );
 
     const data = response.data;
-    if (!data?.status || !data?.result) throw new Error("Lagu tidak ditemukan.");
+    if (!data?.status || !data?.data) throw new Error("Lagu tidak ditemukan.");
 
-    const r = data.result;
-
-    // Format duration
-    let durationText = "";
-    if (r.duration) {
-      const total = Number(r.duration);
-      if (!isNaN(total) && total > 0) {
-        const min = Math.floor(total / 60);
-        const sec = String(total % 60).padStart(2, "0");
-        durationText = `${min}:${sec}`;
-      }
-    }
-
-    // Parse artist & title
-    let title = safeText(r.title, 200);
-    let artist = "";
-    const dashIdx = title.indexOf(" - ");
-    if (dashIdx > 0) {
-      artist = title.slice(0, dashIdx).trim();
-      title = title.slice(dashIdx + 3).trim();
-    }
-
-    // Extract YouTube video ID
-    let videoId = "";
-    if (typeof r.source === "string") {
-      try {
-        const u = new URL(r.source);
-        if (u.hostname.includes("youtube.com")) {
-          videoId = u.searchParams.get("v") || "";
-        } else if (u.hostname === "youtu.be") {
-          videoId = u.pathname.slice(1).split("/")[0] || "";
-        }
-      } catch {}
-    }
+    const r = data.data;
 
     res.json({
       ok: true,
       result: {
-        title,
-        artist,
-        thumbnail: typeof r.thumbnail === "string" && r.thumbnail.startsWith("https://") ? r.thumbnail : "",
-        url: typeof r.source === "string" && r.source.startsWith("https://") ? r.source : "",
-        videoId,
-        duration: durationText,
-        source: "YouTube"
+        title: safeText(r.title, 200),
+        artist: safeText(r.artist, 150),
+        album: safeText(r.album, 150),
+        year: r.year || null,
+        duration: safeText(String(r.duration || ""), 20),
+        cover: typeof r.cover === "string" && r.cover.startsWith("https://") ? r.cover : "",
+        spotifyUrl: typeof r.spotify_url === "string" && r.spotify_url.startsWith("https://") ? r.spotify_url : "",
+        audio: typeof r.mp3_url === "string" && r.mp3_url.startsWith("https://") ? r.mp3_url : ""
       }
     });
-
   } catch (err) {
     console.error("❌ [/api/spotify]", err.message);
     sendError(res, err);
@@ -543,19 +457,13 @@ app.post("/api/react", requireAuth, async (req, res) => {
       {
         params: { api_key: apiKey, url, reaction: emoji },
         timeout: 45_000,
-        headers: {
-          "User-Agent": BROWSER_UA,
-          "Accept": "application/json, */*"
-        }
+        headers: { "User-Agent": BROWSER_UA, "Accept": "application/json, */*" }
       }
     );
 
     const d = response.data;
     if (!d?.success) {
-      const detail = safeText(
-        d?.error?.message || d?.message || "Provider ZxcoderID menolak permintaan.",
-        180
-      );
+      const detail = safeText(d?.error?.message || d?.message || "Provider menolak permintaan.", 180);
       throw new Error(detail);
     }
 
@@ -564,7 +472,6 @@ app.post("/api/react", requireAuth, async (req, res) => {
       message: "Permintaan reaksi dikirim ke provider.",
       result: d?.message ? safeText(d.message, 160) : "Selesai"
     });
-
   } catch (err) {
     console.error("❌ [/api/react]", err.message);
     sendError(res, err);
@@ -573,7 +480,7 @@ app.post("/api/react", requireAuth, async (req, res) => {
 
 
 /* ============================================================
-   FALLBACK — SPA
+   FALLBACK
    ============================================================ */
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) {
@@ -601,11 +508,7 @@ app.use((err, req, res, next) => {
 });
 
 
-/* ============================================================
-   EXPORT & LISTEN
-   ============================================================ */
 module.exports = app;
-
 if (require.main === module) {
   const port = Number(process.env.PORT || 3000);
   app.listen(port, "0.0.0.0", () =>
