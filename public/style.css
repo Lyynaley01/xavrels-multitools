@@ -625,8 +625,9 @@ footer>span:nth-child(2){order:3;width:100%}
 .ba-arrow{font-size:11px}
 .ba-label{font-size:9px;padding:4px 8px}
 }
+
 /* =========================================================
-   MUSIC RESULT — Hero thumbnail + audio player
+   MUSIC RESULT — hero thumbnail + YouTube embed
    ========================================================= */
 .music-result-card {
   display: flex;
@@ -634,10 +635,9 @@ footer>span:nth-child(2){order:3;width:100%}
   overflow: hidden;
   border: 1.5px solid #d9dce2;
   background: #fff;
-  border-radius: 0;
 }
 
-/* ==== HERO — thumbnail jadi background utama ==== */
+/* ==== HERO ==== */
 .music-hero {
   position: relative;
   width: 100%;
@@ -645,7 +645,6 @@ footer>span:nth-child(2){order:3;width:100%}
   overflow: hidden;
   background: linear-gradient(135deg, #1769aa 0%, #0f3d68 100%);
 }
-
 .music-hero-bg {
   position: absolute;
   inset: -20px;
@@ -655,7 +654,6 @@ footer>span:nth-child(2){order:3;width:100%}
   transform: scale(1.15);
   z-index: 0;
 }
-
 .music-hero-overlay {
   position: absolute;
   inset: 0;
@@ -671,8 +669,6 @@ footer>span:nth-child(2){order:3;width:100%}
   );
   z-index: 1;
 }
-
-/* ==== Cover kotak ==== */
 .music-hero-cover {
   flex: 0 0 auto;
   width: 110px;
@@ -692,8 +688,6 @@ footer>span:nth-child(2){order:3;width:100%}
   object-fit: cover;
   display: block;
 }
-
-/* ==== Info text ==== */
 .music-hero-info {
   flex: 1 1 auto;
   min-width: 0;
@@ -753,32 +747,23 @@ footer>span:nth-child(2){order:3;width:100%}
   border-color: rgba(230, 57, 70, 0.9);
 }
 
-/* ==== Audio Player ==== */
+/* ==== YouTube Embed Player ==== */
 .music-player {
-  padding: 14px;
-  background: #f7f8fb;
-  border-top: 1px solid #e5e7eb;
-}
-.music-player audio {
+  position: relative;
   width: 100%;
-  height: 44px;
-  outline: none;
-  border-radius: 999px;
-  background: #fff;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-top: 1.5px solid var(--ink);
+  overflow: hidden;
 }
-.music-player audio::-webkit-media-controls-panel {
-  background: linear-gradient(135deg, #fff9ed, #fff);
-}
-
-/* ==== No audio message ==== */
-.music-no-audio {
-  padding: 14px;
-  background: #fff8df;
-  border-top: 1px solid #f1d985;
-  font-size: 11px;
-  color: #68551b;
-  text-align: center;
-  font-weight: 600;
+.music-player iframe,
+.music-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
 }
 
 /* ==== Actions ==== */
@@ -812,14 +797,9 @@ footer>span:nth-child(2){order:3;width:100%}
       rgba(15, 20, 38, 0.35) 100%
     );
   }
-  .music-hero-cover {
-    width: 82px;
-    height: 82px;
-    font-size: 32px;
-  }
+  .music-hero-cover { width: 82px; height: 82px; font-size: 32px; }
   .music-hero-title { font-size: 22px; }
   .music-hero-artist { font-size: 11px; }
   .music-meta-chip { font-size: 9px; padding: 3px 8px; }
-  .music-player audio { height: 40px; }
   .music-actions .download-btn { font-size: 9px; padding: 11px; }
 }

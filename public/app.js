@@ -135,7 +135,7 @@ const toolInfo = {
   spotify: {
     title: "MUSIC FINDER", titleLead: "MUSIC", titleAccent: "FINDER", issue: "TOOL 05", number: "05",
     category: "MUSIC LAB", icon: "♫",
-    description: "Cari lagu berdasarkan judul atau artis, lalu putar preview-nya langsung di sini.",
+    description: "Cari lagu berdasarkan judul atau artis, lalu putar langsung di sini.",
     tip: "Coba kombinasi judul lagu dan nama artis untuk hasil yang lebih tepat.",
     label: "Judul lagu atau nama artis", placeholder: "judul lagu atau nama artis", inputType: "text",
     endpoint: "api/spotify", button: "FIND MUSIC",
@@ -538,7 +538,7 @@ function renderPinterest(data) {
 
 
 /* =========================================================
-   RENDER MUSIC — Thumbnail utama + info + audio player
+   RENDER MUSIC — hero + YouTube embed
    ========================================================= */
 function renderMusic(data) {
   const item = data.result || {};
@@ -548,7 +548,6 @@ function renderMusic(data) {
   const card = document.createElement("article");
   card.className = "music-result-card";
 
-  /* ===== Thumbnail utama (background hero) ===== */
   const hero = document.createElement("div");
   hero.className = "music-hero";
 
@@ -610,23 +609,22 @@ function renderMusic(data) {
   hero.append(heroOverlay);
   card.append(hero);
 
-  /* ===== Audio player ===== */
-  if (item.audio) {
-    const player = document.createElement("div");
-    player.className = "music-player";
+  /* ===== YouTube Player ===== */
+  if (item.videoId) {
+    const playerWrap = document.createElement("div");
+    playerWrap.className = "music-player";
 
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.preload = "metadata";
-    audio.src = item.audio;
-    player.append(audio);
+    const iframe = document.createElement("iframe");
+    iframe.className = "music-iframe";
+    iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(item.videoId)}?rel=0&modestbranding=1`;
+    iframe.title = item.title || "YouTube player";
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+    iframe.allowFullscreen = true;
+    iframe.loading = "lazy";
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
 
-    card.append(player);
-  } else if (item.url) {
-    const noAudio = document.createElement("div");
-    noAudio.className = "music-no-audio";
-    noAudio.innerHTML = `🎵 Preview audio tidak tersedia. Klik tombol di bawah untuk membuka di YouTube.`;
-    card.append(noAudio);
+    playerWrap.append(iframe);
+    card.append(playerWrap);
   }
 
   /* ===== Actions ===== */
