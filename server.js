@@ -705,16 +705,6 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
           }))
       : [];
 
-    const otherLinks = Array.isArray(data.otherLinks)
-      ? data.otherLinks
-          .filter((l) => l?.url && typeof l.url === "string" && /^https?:\/\//i.test(l.url))
-          .slice(0, 10)
-          .map((l) => ({
-            url: safeText(l.url, 1000),
-            source: safeText(String(l.source || ""), 40)
-          }))
-      : [];
-
     const result = {
       author: safeText(String(data.author || ""), 80),
       username: safeText(String(authorDetail.uniqueId || ""), 80),
@@ -744,8 +734,7 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
         shares:   Number(stats.shares)   || 0
       },
 
-      presetLinks,
-      otherLinks
+      presetLinks
     };
 
     res.set("Cache-Control", "no-store");

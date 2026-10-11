@@ -1008,7 +1008,6 @@ function renderFpreset(data) {
   const item = data.result || {};
   const stats = item.stats || {};
   const presetLinks = Array.isArray(item.presetLinks) ? item.presetLinks : [];
-  const otherLinks = Array.isArray(item.otherLinks) ? item.otherLinks : [];
 
   resultShell.hidden = false;
   resultArea.replaceChildren();
@@ -1104,29 +1103,41 @@ function renderFpreset(data) {
     card.append(statsRow);
   }
 
-  /* ===== VIDEO THUMBNAIL (clickable → modal) ===== */
-  if (item.cover || item.videoUrl) {
+  /* ===== VIDEO PREVIEW (langsung bisa diputar) ===== */
+  if (item.videoUrl || item.cover) {
     const videoWrap = document.createElement("div");
-    videoWrap.className = "fpreset-video-thumb";
-    if (item.cover) {
-      videoWrap.style.backgroundImage = `url("${item.cover}")`;
+    videoWrap.className = "fpreset-video-inline-wrap";
+
+    if (item.videoUrl) {
+      const video = document.createElement("video");
+      video.className = "fpreset-video-inline";
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.setAttribute("aria-label", "Video TikTok sumber preset");
+      if (item.cover) video.poster = item.cover;
+      video.src = item.videoUrl;
+      video.addEventListener("error", () => {
+        videoWrap.classList.add("video-unavailable");
+        if (!videoWrap.querySelector(".fpreset-video-fallback")) {
+          const fallback = document.createElement("a");
+          fallback.className = "fpreset-video-fallback";
+          fallback.href = item.sourceUrl || "#";
+          fallback.target = "_blank";
+          fallback.rel = "noopener noreferrer";
+          fallback.textContent = "Video tidak bisa diputar? Buka video asli di TikTok ↗";
+          videoWrap.append(fallback);
+        }
+      }, { once: true });
+      videoWrap.append(video);
+    } else {
+      const cover = document.createElement("img");
+      cover.className = "fpreset-video-cover";
+      cover.src = item.cover;
+      cover.alt = "Sampul video TikTok";
+      cover.loading = "lazy";
+      videoWrap.append(cover);
     }
-
-    const overlay = document.createElement("div");
-    overlay.className = "fpreset-video-overlay";
-
-    const playBtn = document.createElement("div");
-    playBtn.className = "fpreset-play-btn";
-    playBtn.innerHTML = `<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
-
-    const playText = document.createElement("span");
-    playText.className = "fpreset-play-text";
-    playText.textContent = "Klik untuk putar video";
-
-    overlay.append(playBtn, playText);
-    videoWrap.append(overlay);
-
-    videoWrap.addEventListener("click", () => openFpresetVideoModal(item));
 
     card.append(videoWrap);
   }
@@ -1233,62 +1244,6 @@ function renderFpreset(data) {
     card.append(empty);
   }
 
-  /* ===== OTHER LINKS ===== */
-  if (otherLinks.length) {
-    const linksWrap = document.createElement("div");
-    linksWrap.className = "fpreset-links";
-
-    const linksTitle = document.createElement("div");
-    linksTitle.className = "fpreset-links-title";
-    linksTitle.textContent = "🔗 Link dari creator";
-    linksWrap.append(linksTitle);
-
-    otherLinks.forEach((l) => {
-      const a = document.createElement("a");
-      a.className = "fpreset-link-item";
-      a.href = l.url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-
-      // Icon + label berdasarkan hostname
-      try {
-        const u = new URL(l.url);
-        const host = u.hostname.replace(/^www\./, "");
-
-        if (host.includes("whatsapp") || host.includes("wa.me")) {
-          a.innerHTML = `💬 <span>WhatsApp</span>`;
-        } else if (host.includes("linktr.ee")) {
-          a.innerHTML = `🌳 <span>Linktree</span>`;
-        } else if (host.includes("instagram")) {
-          a.innerHTML = `📸 <span>Instagram</span>`;
-        } else {
-          a.innerHTML = `🔗 <span>${host}</span>`;
-        }
-      } catch {
-        a.innerHTML = `🔗 <span>Link</span>`;
-      }
-
-      linksWrap.append(a);
-    });
-
-    card.append(linksWrap);
-  }
-
-  /* ===== ACTIONS ===== */
-  const actions = document.createElement("div");
-  actions.className = "fpreset-actions";
-
-  if (item.sourceUrl) {
-    const open = document.createElement("a");
-    open.className = "download-btn";
-    open.href = item.sourceUrl;
-    open.target = "_blank";
-    open.rel = "noopener noreferrer";
-    open.textContent = "▶  BUKA DI TIKTOK";
-    actions.append(open);
-  }
-
-  if (actions.children.length) card.append(actions);
 
   resultArea.append(card);
 
