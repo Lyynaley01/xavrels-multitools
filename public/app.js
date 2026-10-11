@@ -619,7 +619,6 @@ function renderMusic(data) {
 if (item.audio) {
   const playerWrap = document.createElement("div");
   playerWrap.className = "music-player";
-  // Paksa fullwidth
   playerWrap.style.display = "block";
   playerWrap.style.width = "100%";
   playerWrap.style.boxSizing = "border-box";
@@ -631,7 +630,6 @@ if (item.audio) {
   audio.controls = true;
   audio.preload = "metadata";
   audio.controlsList = "nodownload";
-  // Paksa audio fullwidth
   audio.style.display = "block";
   audio.style.width = "100%";
   audio.style.minWidth = "100%";
@@ -643,10 +641,6 @@ if (item.audio) {
   audio.style.background = "#fff";
   audio.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.08)";
 
-  playerWrap.append(audio);
-  card.append(playerWrap);
-
-  // Loading placeholder di atas audio
   const loadingText = document.createElement("div");
   loadingText.className = "music-player-loading";
   loadingText.textContent = "⏳ Menyiapkan audio...";
@@ -655,9 +649,33 @@ if (item.audio) {
   loadingText.style.fontSize = "12px";
   loadingText.style.color = "#646b7a";
   loadingText.style.fontWeight = "700";
-  playerWrap.insertBefore(loadingText, audio);
 
-  // Event listener
+  playerWrap.append(loadingText, audio);
+  card.append(playerWrap);
+
+  let retried = false;
+  let currentToken = null;
+
+  function buildStreamUrl(token) {
+    return `/api/stream?url=${encodeURIComponent(item.audio)}&token=${encodeURIComponent(token)}`;
+  }
+
+  async function loadAudio() {
+    try {
+      // Paksa refresh token — kosongin dulu supaya dapet yang fresh
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const token = await ensureSession();
+      currentToken = token;
+      console.log("[MUSIC] Setting audio src dengan token:", token.slice(0, 12) + "...");
+      audio.src = buildStreamUrl(token);
+      audio.load();
+    } catch (err) {
+      console.error("[MUSIC] Gagal set src:", err);
+      playerWrap.innerHTML = `<div style="padding:14px;text-align:center;background:#fff8df;border:1.5px solid #f1d985;border-radius:6px;font-size:11px;color:#68551b;font-weight:700;">🎵 ${err.message}</div>`;
+    }
+  }
+
   audio.addEventListener("loadedmetadata", () => {
     console.log("[MUSIC] Audio metadata loaded ✅");
     loadingText.remove();
@@ -668,24 +686,36 @@ if (item.audio) {
     loadingText.remove();
   });
 
-  audio.addEventListener("error", (e) => {
-    console.error("[MUSIC] Audio error:", e, audio.error);
-    playerWrap.innerHTML = `<div class="music-player-error" style="padding:14px;text-align:center;background:#fff8df;border:1.5px solid #f1d985;border-radius:6px;font-size:11px;color:#68551b;font-weight:700;">🎵 Audio gagal diputar. Klik BUKA DI SPOTIFY di bawah.</div>`;
+  // AUTO RETRY kalau error
+  audio.addEventListener("error", async (e) => {
+    const err = audio.error;
+    console.error("[MUSIC] Audio error:", err?.code, err?.message);
+
+    // Kalau error network (code 4 / MEDIA_ELEMENT_ERROR) dan belum retry
+    if (!retried && err) {
+      retried = true;
+      console.log("[MUSIC] Retry dengan token fresh...");
+
+      // Coba refresh token & retry SEKALI
+      try {
+        sessionToken = null;
+        sessionExpiresAt = 0;
+        const newToken = await ensureSession();
+        console.log("[MUSIC] Retry dengan token baru");
+        audio.src = buildStreamUrl(newToken);
+        audio.load();
+        return;
+      } catch (err2) {
+        console.error("[MUSIC] Retry gagal:", err2);
+      }
+    }
+
+    // Kalau retry udah, tampilkan pesan error
+    playerWrap.innerHTML = `<div style="padding:14px;text-align:center;background:#fff8df;border:1.5px solid #f1d985;border-radius:6px;font-size:11px;color:#68551b;font-weight:700;">🎵 Audio gagal diputar. Klik BUKA DI SPOTIFY di bawah.</div>`;
   });
 
-  // Set src setelah token valid
-  (async () => {
-    try {
-      const token = await ensureSession();
-      const streamUrl = `/api/stream?url=${encodeURIComponent(item.audio)}&token=${encodeURIComponent(token)}`;
-      console.log("[MUSIC] Setting audio src");
-      audio.src = streamUrl;
-      audio.load();
-    } catch (err) {
-      console.error("[MUSIC] Gagal ambil token:", err);
-      playerWrap.innerHTML = `<div class="music-player-error">🎵 ${err.message}</div>`;
-    }
-  })();
+  // Mulai load
+  loadAudio();
 }
   /* ===== Actions ===== */
   const actions = document.createElement("div");

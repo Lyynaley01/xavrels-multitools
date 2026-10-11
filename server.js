@@ -171,8 +171,10 @@ app.post("/api/session", (req, res) => {
     }
 
     const token = createSession(req);
-    res.set("Cache-Control", "no-store");
-    res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
+res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+res.set("Pragma", "no-cache");
+res.set("Expires", "0");
+res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
   } catch (err) {
     console.error("❌ [/api/session]", err.message);
     res.status(500).json({ ok: false, error: "Gagal membuat session." });
