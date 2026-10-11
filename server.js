@@ -140,6 +140,91 @@ function requireAuth(req, res, next) {
 
 
 /* ============================================================
+   CACHE + RATE LIMIT HELPERS
+   ============================================================ */
+
+/* ===== Simple in-memory cache ===== */
+const responseCache = new Map();
+const CACHE_MAX_SIZE = 500;
+
+function cacheGet(key) {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function cacheSet(key, value, ttlMs) {
+  // Evict oldest kalau penuh
+  if (responseCache.size >= CACHE_MAX_SIZE) {
+    const firstKey = responseCache.keys().next().value;
+    responseCache.delete(firstKey);
+  }
+  responseCache.set(key, {
+    value,
+    expiresAt: Date.now() + ttlMs
+  });
+}
+
+// Auto-prune tiap 5 menit
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of responseCache.entries()) {
+    if (now > entry.expiresAt) responseCache.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+/* ===== Per-endpoint rate limiter (in-memory) ===== */
+const endpointLimits = new Map(); // key: `ip:endpoint`, value: { count, resetAt }
+
+function checkEndpointLimit(identifier, endpoint, maxPerMinute) {
+  const now = Date.now();
+  const key = `${identifier}:${endpoint}`;
+  let entry = endpointLimits.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + 60_000 };
+    endpointLimits.set(key, entry);
+  }
+
+  entry.count++;
+  if (entry.count > maxPerMinute) {
+    return { ok: false, remaining: 0, resetAt: entry.resetAt };
+  }
+  return { ok: true, remaining: maxPerMinute - entry.count, resetAt: entry.resetAt };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of endpointLimits.entries()) {
+    if (now > entry.resetAt) endpointLimits.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+/* ===== Bot detection (basic UA check) ===== */
+function isLikelyBot(req) {
+  const ua = (req.headers["user-agent"] || "").toLowerCase();
+  const botPatterns = [
+    "headless", "puppeteer", "playwright", "selenium",
+    "phantomjs", "nightmare", "curl/", "wget/",
+    "python-requests", "python-urllib", "go-http-client",
+    "java/", "okhttp", "axios/", "node-fetch", "undici",
+    "scrapy", "httpclient", "postmanruntime"
+  ];
+  if (!ua) return true;
+  return botPatterns.some(p => ua.includes(p));
+}
+
+/* ===== Helper buat cek provider publik ===== */
+function attachPublicWarningHeader(res) {
+  res.set("X-Provider-Public", "true");
+}
+
+
+/* ============================================================
    /api/session
    ============================================================ */
 /* ===== Strict origin validation ===== */
@@ -374,9 +459,34 @@ app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res)
    ============================================================ */
 app.post("/api/pinterest", requireAuth, async (req, res) => {
   try {
+    // 🔥 LAYER 1: Bot detection
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/pinterest] Bot detected: ${req.headers["user-agent"]}`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // 🔥 LAYER 2: Rate limit ketat (5 req/menit per IP + session)
+    const identifier = req.ip || req.session?.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "pinterest", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
     const q = safeText(req.body?.query, 100);
     if (q.length < 2) throw new Error("Masukkan keyword minimal 2 karakter.");
 
+    // 🔥 LAYER 3: Cache (5 menit TTL)
+    const cacheKey = `pinterest:${q.toLowerCase()}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      console.log(`✅ [/api/pinterest] CACHE HIT: "${q}"`);
+      res.set("X-Cache", "HIT");
+      return res.json({ ok: true, results: cached });
+    }
+
+    // Cache MISS — hit provider
+    console.log(`📡 [/api/pinterest] CACHE MISS — fetch provider: "${q}"`);
     const response = await http.get("https://api.ikyyxd.my.id/search/pinterest", {
       params: { apikey: "kyzz", q },
       timeout: 30_000,
@@ -404,6 +514,10 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
         } : null
       }));
 
+    // Simpan ke cache
+    cacheSet(cacheKey, results, 5 * 60 * 1000);
+
+    res.set("X-Cache", "MISS");
     res.json({ ok: true, results });
   } catch (err) {
     console.error("❌ [/api/pinterest]", err.message);
@@ -703,19 +817,44 @@ function fp_firstPresetLink(presetLinks = []) {
 
 app.post("/api/fpreset", requireAuth, async (req, res) => {
   try {
+    // Bot detection
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/fpreset] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // Rate limit ketat (3 req/menit — endpoint ini paling berat)
+    const identifier = req.ip || req.session?.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "fpreset", 3);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
     const inputUrl = safeText(req.body?.url, 1000);
     if (!inputUrl) throw new Error("Masukkan link video TikTok.");
     if (!fp_isTikTokUrl(inputUrl)) throw new Error("URL harus berupa link TikTok yang valid.");
 
-    const response = await http.get(FPRESET_API_BASE, {
-      params: { url: inputUrl },
-      timeout: 45_000,
-      headers: {
-        "User-Agent": BROWSER_UA,
-        "Accept": "text/event-stream, application/json, text/plain, */*"
-      },
-      validateStatus: () => true
-    });
+    // Cache (15 menit TTL — video preset gak sering berubah)
+    const cacheKey = `fpreset:${inputUrl}`;
+const cached = cacheGet(cacheKey);
+if (cached) {
+  console.log(`✅ [/api/fpreset] CACHE HIT: ${inputUrl}`);
+  res.set("X-Cache", "HIT");
+  return res.json({ ok: true, result: cached });
+}
+
+// Cache MISS — fetch dari amfinder
+console.log(`📡 [/api/fpreset] CACHE MISS — fetch: ${inputUrl}`);
+const response = await http.get(FPRESET_API_BASE, {
+  params: { url: inputUrl },
+  timeout: 45_000,
+  headers: {
+    "User-Agent": BROWSER_UA,
+    "Accept": "text/event-stream, application/json, text/plain, */*"
+  },
+  validateStatus: () => true
+});
 
     if (response.status < 200 || response.status >= 300) {
       const apiMsg = response.data?.message || response.data?.error || response.data?.description;
@@ -804,6 +943,10 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
       presetLinks
     };
 
+        // Simpan ke cache
+    cacheSet(cacheKey, result, 15 * 60 * 1000);
+
+    res.set("X-Cache", "MISS");
     res.set("Cache-Control", "no-store");
     res.json({ ok: true, result });
 
@@ -820,9 +963,34 @@ const FPRESET_SEARCH_API = process.env.FPRESET_SEARCH_API || "https://amfinder.w
 
 app.post("/api/fpreset-search", requireAuth, async (req, res) => {
   try {
+    // 🔥 LAYER 1: Bot detection
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/fpreset-search] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // 🔥 LAYER 2: Rate limit ketat (5 req/menit per IP + session)
+    const identifier = req.ip || req.session?.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "fpreset-search", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
     const q = safeText(req.body?.query, 120);
     if (q.length < 2) throw new Error("Masukkan keyword minimal 2 karakter.");
 
+    // 🔥 LAYER 3: Cache (10 menit TTL — biar hemat hit provider)
+    const cacheKey = `fpreset-search:${q.toLowerCase()}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      console.log(`✅ [/api/fpreset-search] CACHE HIT: "${q}"`);
+      res.set("X-Cache", "HIT");
+      return res.json({ ok: true, videos: cached });
+    }
+
+    // Cache MISS — hit provider
+    console.log(`📡 [/api/fpreset-search] CACHE MISS — fetch: "${q}"`);
     const response = await http.get(FPRESET_SEARCH_API, {
       params: { mode: "pick", q },
       timeout: 45_000,
@@ -838,10 +1006,9 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
       throw new Error(apiMsg ? `API error: ${apiMsg}` : `API mengembalikan HTTP ${response.status}.`);
     }
 
-    // 🔥 FIX: Parse SSE `candidates` event dari amfinder (data video ada di sini)
+    // Parse SSE candidates (pake helper yang udah ada)
     let rawList = fp_parseCandidatesSSE(response.data);
 
-    // Fallback ke parser lama kalau bukan format candidates
     if (!rawList) {
       const data = fp_parseAmFinderResponse(response.data);
       if (data) {
@@ -854,9 +1021,7 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
     }
     if (!rawList) rawList = [];
 
-    // Normalisasi field — amfinder pakai: handle, snippet, thumb, stats.playCount, stats.likeCount
     const videos = rawList.slice(0, 30).map((v) => {
-      // author: amfinder pakai `handle` (format "@username")
       let uniqueId = v.handle || v.author?.uniqueId || v.author?.username || "";
       uniqueId = String(uniqueId).replace(/^@/, "").trim();
 
@@ -881,7 +1046,6 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
         return 0;
       };
 
-      // amfinder pakai: thumb, snippet, stats.playCount, stats.likeCount
       const cover = firstString(v.thumb, v.cover, v.thumbnail, v.dynamicCover, v.dynamic_cover);
       const description = firstString(v.snippet, v.description, v.desc, v.caption, v.title);
 
@@ -901,7 +1065,10 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
       };
     }).filter((v) => v.url && /tiktok\.com/i.test(v.url));
 
-    res.set("Cache-Control", "no-store");
+    // Simpan ke cache
+    cacheSet(cacheKey, videos, 10 * 60 * 1000);
+
+    res.set("X-Cache", "MISS");
     res.json({ ok: true, videos });
 
   } catch (err) {
