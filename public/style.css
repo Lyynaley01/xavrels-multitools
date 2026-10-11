@@ -1517,12 +1517,37 @@ footer>span:nth-child(2){order:3;width:100%}
   aspect-ratio: 16 / 9;
   background-size: cover;
   background-position: center;
-  background-color: #1a1a2e;
+  background-color: #171b2d;
+  background-image: radial-gradient(circle at 18% 20%, rgba(230, 57, 70, .24), transparent 34%),
+                    radial-gradient(circle at 82% 78%, rgba(105, 83, 190, .28), transparent 38%),
+                    linear-gradient(135deg, #171b2d, #29203a 55%, #111522);
   cursor: pointer;
   overflow: hidden;
-  transition: filter .2s ease;
+  transition: filter .2s ease, transform .2s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 .fpreset-video-thumb:hover { filter: brightness(1.08); }
+.fpreset-video-thumb:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: -4px;
+}
+.fpreset-video-thumb::before {
+  content: "VIDEO PREVIEW";
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 999px;
+  background: rgba(12, 14, 24, .62);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  pointer-events: none;
+}
 .fpreset-video-thumb::after {
   content: "";
   position: absolute;
@@ -2023,43 +2048,4 @@ footer>span:nth-child(2){order:3;width:100%}
   .fpv-mute-btn { width: 30px; height: 30px; }
   .fpreset-video-caption { font-size: 11px; }
   .fpv-meta-item { font-size: 9px; }
-}
-
-/* ===== FPRESET: inline video preview ===== */
-.fpreset-video-inline-wrap{
-  width:100%;
-  margin:14px 0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-  overflow:hidden;
-  border:1px solid var(--line, rgba(23,27,43,.13));
-  border-radius:14px;
-  background:#10131c;
-}
-.fpreset-video-inline{
-  display:block;
-  width:100%;
-  max-height:min(72vh,720px);
-  aspect-ratio:9/16;
-  object-fit:contain;
-  background:#10131c;
-}
-.fpreset-video-cover{
-  display:block;
-  width:100%;
-  max-height:520px;
-  object-fit:contain;
-}
-.fpreset-video-fallback{
-  display:block;
-  margin:0 12px 12px;
-  padding:10px 12px;
-  border-radius:9px;
-  background:#fff;
-  color:#171b2b;
-  font-size:12px;
-  font-weight:800;
-  text-align:center;
 }

@@ -1103,41 +1103,40 @@ function renderFpreset(data) {
     card.append(statsRow);
   }
 
-  /* ===== VIDEO PREVIEW (langsung bisa diputar) ===== */
-  if (item.videoUrl || item.cover) {
+  /* ===== VIDEO THUMBNAIL (clickable → modal) ===== */
+  if (item.cover || item.videoUrl) {
     const videoWrap = document.createElement("div");
-    videoWrap.className = "fpreset-video-inline-wrap";
-
-    if (item.videoUrl) {
-      const video = document.createElement("video");
-      video.className = "fpreset-video-inline";
-      video.controls = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      video.setAttribute("aria-label", "Video TikTok sumber preset");
-      if (item.cover) video.poster = item.cover;
-      video.src = item.videoUrl;
-      video.addEventListener("error", () => {
-        videoWrap.classList.add("video-unavailable");
-        if (!videoWrap.querySelector(".fpreset-video-fallback")) {
-          const fallback = document.createElement("a");
-          fallback.className = "fpreset-video-fallback";
-          fallback.href = item.sourceUrl || "#";
-          fallback.target = "_blank";
-          fallback.rel = "noopener noreferrer";
-          fallback.textContent = "Video tidak bisa diputar? Buka video asli di TikTok ↗";
-          videoWrap.append(fallback);
-        }
-      }, { once: true });
-      videoWrap.append(video);
-    } else {
-      const cover = document.createElement("img");
-      cover.className = "fpreset-video-cover";
-      cover.src = item.cover;
-      cover.alt = "Sampul video TikTok";
-      cover.loading = "lazy";
-      videoWrap.append(cover);
+    videoWrap.className = "fpreset-video-thumb";
+    videoWrap.setAttribute("role", "button");
+    videoWrap.setAttribute("tabindex", "0");
+    videoWrap.setAttribute("aria-label", "Buka video dalam pop-up");
+    if (item.cover) {
+      videoWrap.style.backgroundImage = `url("${item.cover}")`;
+      videoWrap.classList.add("has-cover");
     }
+
+    const overlay = document.createElement("div");
+    overlay.className = "fpreset-video-overlay";
+
+    const playBtn = document.createElement("div");
+    playBtn.className = "fpreset-play-btn";
+    playBtn.innerHTML = `<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+
+    const playText = document.createElement("span");
+    playText.className = "fpreset-play-text";
+    playText.textContent = "Klik untuk putar video";
+
+    overlay.append(playBtn, playText);
+    videoWrap.append(overlay);
+
+    const openPreview = () => openFpresetVideoModal(item);
+    videoWrap.addEventListener("click", openPreview);
+    videoWrap.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openPreview();
+      }
+    });
 
     card.append(videoWrap);
   }
@@ -1244,6 +1243,22 @@ function renderFpreset(data) {
     card.append(empty);
   }
 
+  /* ===== OTHER LINKS ===== */
+/* ===== ACTIONS ===== */
+  const actions = document.createElement("div");
+  actions.className = "fpreset-actions";
+
+  if (item.sourceUrl) {
+    const open = document.createElement("a");
+    open.className = "download-btn";
+    open.href = item.sourceUrl;
+    open.target = "_blank";
+    open.rel = "noopener noreferrer";
+    open.textContent = "▶  BUKA DI TIKTOK";
+    actions.append(open);
+  }
+
+  if (actions.children.length) card.append(actions);
 
   resultArea.append(card);
 

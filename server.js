@@ -685,8 +685,36 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
     if (data.found === false) throw new Error("Preset tidak ditemukan di video ini.");
 
     const video        = data.video        || {};
-    const authorDetail = data.authorDetail || {};
-    const stats        = video.stats || {};
+    const authorDetail = data.authorDetail || data.author || video.author || {};
+    const stats        = video.stats || video.statistics || data.stats || data.statistics || {};
+
+    // API provider bisa memakai nama field berbeda untuk statistik TikTok.
+    // Jangan memakai data.scanned.comments karena itu jumlah komentar yang dipindai,
+    // bukan total komentar pada video.
+    const firstCount = (...values) => {
+      for (const value of values) {
+        if (value === null || value === undefined || value === "") continue;
+        const number = Number(value);
+        if (Number.isFinite(number) && number >= 0) return number;
+      }
+      return 0;
+    };
+    const firstString = (...values) => {
+      for (const value of values) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+      }
+      return "";
+    };
+    const avatarValue = authorDetail.avatar || authorDetail.avatarUrl ||
+      authorDetail.avatar_url || authorDetail.avatarLarger ||
+      authorDetail.avatarMedium || authorDetail.avatarThumb ||
+      authorDetail.avatar_large || authorDetail.avatar_medium ||
+      authorDetail.avatar_thumb || authorDetail.avatarThumbUrl || "";
+    const avatarUrl = typeof avatarValue === "string"
+      ? avatarValue
+      : (Array.isArray(avatarValue?.urlList) ? avatarValue.urlList[0] :
+        (Array.isArray(avatarValue?.url_list) ? avatarValue.url_list[0] : ""));
 
     const presetLinks = Array.isArray(data.presetLinks)
       ? data.presetLinks
@@ -706,15 +734,15 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
       : [];
 
     const result = {
-      author: safeText(String(data.author || ""), 80),
-      username: safeText(String(authorDetail.uniqueId || ""), 80),
-      nickname: safeText(String(authorDetail.nickname || ""), 120),
-      bio: safeText(String(authorDetail.bio || ""), 500),
+      author: safeText(firstString(data.author, authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id), 80),
+      username: safeText(firstString(authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id, authorDetail.uniqueID), 80),
+      nickname: safeText(firstString(authorDetail.nickname, authorDetail.displayName, authorDetail.display_name, authorDetail.name), 120),
+      bio: safeText(firstString(authorDetail.bio, authorDetail.signature, authorDetail.bioDescription, authorDetail.bio_description), 500),
       bioLink: typeof authorDetail.bioLink === "string" && /^https?:\/\//i.test(authorDetail.bioLink)
         ? safeText(authorDetail.bioLink, 500)
         : "",
-      avatar: typeof authorDetail.avatar === "string" && /^https?:\/\//i.test(authorDetail.avatar)
-        ? authorDetail.avatar
+      avatar: typeof avatarUrl === "string" && /^https?:\/\//i.test(avatarUrl)
+        ? avatarUrl
         : "",
 
       videoId: safeText(String(video.id || ""), 40),
@@ -728,10 +756,10 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
         : (typeof video.playUrl === "string" && /^https?:\/\//i.test(video.playUrl) ? video.playUrl : ""),
 
       stats: {
-        views:    Number(stats.views)    || 0,
-        likes:    Number(stats.likes)    || 0,
-        comments: Number(stats.comments) || 0,
-        shares:   Number(stats.shares)   || 0
+        views: firstCount(stats.views, stats.playCount, stats.viewCount, stats.play_count, stats.view_count, video.playCount, video.play_count, video.viewCount, video.view_count),
+        likes: firstCount(stats.likes, stats.diggCount, stats.likeCount, stats.like_count, stats.digg_count, video.diggCount, video.digg_count, video.likeCount, video.like_count),
+        comments: firstCount(stats.comments, stats.commentCount, stats.comment_count, video.commentCount, video.comment_count),
+        shares: firstCount(stats.shares, stats.shareCount, stats.share_count, video.shareCount, video.share_count)
       },
 
       presetLinks
