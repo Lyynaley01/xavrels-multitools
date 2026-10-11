@@ -385,11 +385,19 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
     const results = (Array.isArray(response.data.results) ? response.data.results : [])
       .filter(x => typeof x?.image_url === "string" && /^https:\/\/[^ ]+/i.test(x.image_url))
       .filter(x => { if (seen.has(x.image_url)) return false; seen.add(x.image_url); return true; })
-      .slice(0, 12)
+      .slice(0, 10)
       .map(x => ({
+        id: safeText(String(x.id || ""), 40),
         image_url: x.image_url,
-        title: safeText(x.title, 120) || "Pinterest image",
-        source: safeText(x.source, 80)
+        title: safeText(x.title, 200) || "Pinterest Image",
+        pin_url: typeof x.source === "string" && /^https?:\/\//i.test(x.source)
+          ? safeText(x.source, 500)
+          : "",
+        author: x.user && typeof x.user === "object" ? {
+          username: safeText(String(x.user.username || ""), 80),
+          name: safeText(String(x.user.name || ""), 100),
+          followers: typeof x.user.followers === "number" ? x.user.followers : null
+        } : null
       }));
 
     res.json({ ok: true, results });

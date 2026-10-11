@@ -501,9 +501,10 @@ function renderPinterest(data) {
   const results = Array.isArray(data.results) ? data.results : [];
   resultShell.hidden = false;
   resultArea.replaceChildren();
+
   const summary = document.createElement("div");
   summary.className = "result-summary";
-  summary.innerHTML = `<strong>${results.length} visual ditemukan</strong><span>Pilih kartu untuk membuka gambar aslinya.</span>`;
+  summary.innerHTML = `<strong>${results.length} visual ditemukan</strong><span>Klik kartu untuk melihat detail.</span>`;
   resultArea.append(summary);
 
   if (!results.length) {
@@ -516,24 +517,182 @@ function renderPinterest(data) {
 
   const grid = document.createElement("div");
   grid.className = "pin-results";
+
   results.forEach((item, index) => {
-    const link = document.createElement("a");
-    link.className = "pin-result-card";
-    link.href = item.image_url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    const image = document.createElement("img");
-    image.loading = "lazy";
-    image.src = item.image_url;
-    image.alt = item.title || `Pinterest result ${index + 1}`;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pin-result-card";
+    btn.style.animationDelay = `${index * 40}ms`;
+
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.src = item.image_url;
+    img.alt = item.title || `Pinterest ${index + 1}`;
+    img.onerror = () => {
+      // Fallback kalau gambar gagal load
+      img.style.background = "#eef0f4";
+      img.alt = "Gagal memuat";
+    };
+
+    const overlay = document.createElement("div");
+    overlay.className = "pin-result-overlay";
+
     const caption = document.createElement("span");
+    caption.className = "pin-result-caption";
     caption.textContent = item.title || `Visual ${index + 1}`;
-    link.append(image, caption);
-    grid.append(link);
+
+    const zoom = document.createElement("span");
+    zoom.className = "pin-result-zoom";
+    zoom.textContent = "🔍";
+
+    overlay.append(caption, zoom);
+    btn.append(img, overlay);
+
+    btn.addEventListener("click", () => openPinModal(item));
+
+    grid.append(btn);
   });
+
   resultArea.append(grid);
+
   const note = $("#resultHeadingNote");
   if (note) note.textContent = `${results.length} visual`;
+}
+
+
+/* =========================================================
+   PIN DETAIL MODAL
+   ========================================================= */
+function openPinModal(item) {
+  const old = document.getElementById("pinModal");
+  if (old) old.remove();
+
+  const modal = document.createElement("div");
+  modal.className = "pin-modal-backdrop";
+  modal.id = "pinModal";
+
+  // Format followers
+  const followersText = (() => {
+    if (item.author?.followers === null || item.author?.followers === undefined) return "";
+    const n = Number(item.author.followers);
+    if (isNaN(n)) return "";
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
+  })();
+
+  const hasAuthor = item.author && (item.author.name || item.author.username);
+  const hasPinUrl = !!item.pin_url;
+
+  modal.innerHTML = `
+    <div class="pin-modal-card">
+      <button class="pin-modal-close" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="pin-modal-image-wrap">
+        <img class="pin-modal-img" src="${item.image_url}" alt="${item.title || 'Pinterest image'}">
+        <div class="pin-modal-skeleton"></div>
+      </div>
+
+      <div class="pin-modal-info">
+        <h3 class="pin-modal-title">${item.title || "Pinterest Image"}</h3>
+
+        ${hasAuthor ? `
+          <div class="pin-modal-author">
+            <div class="pin-modal-author-avatar">
+              ${(item.author.name || item.author.username || "?").trim().charAt(0).toUpperCase()}
+            </div>
+            <div class="pin-modal-author-meta">
+              <strong>${item.author.name || item.author.username || "Anonim"}</strong>
+              <span>
+                ${item.author.username ? `@${item.author.username}` : ""}
+                ${followersText ? ` · ${followersText} followers` : ""}
+              </span>
+            </div>
+          </div>
+        ` : ""}
+
+        <div class="pin-modal-actions">
+          ${hasPinUrl ? `
+            <a class="pin-modal-btn pin-modal-btn-primary" href="${item.pin_url}" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+              <span>Lihat di Pinterest</span>
+            </a>
+          ` : ""}
+
+          <a class="pin-modal-btn pin-modal-btn-secondary" href="${item.image_url}" target="_blank" rel="noopener noreferrer" download>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Buka Gambar HD</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.append(modal);
+  document.body.style.overflow = "hidden";
+
+  const img = modal.querySelector(".pin-modal-img");
+  const skeleton = modal.querySelector(".pin-modal-skeleton");
+
+  // Hilangkan skeleton saat gambar load
+  img.addEventListener("load", () => {
+    skeleton.style.opacity = "0";
+    setTimeout(() => skeleton.remove(), 300);
+  });
+  img.addEventListener("error", () => {
+    skeleton.remove();
+    img.alt = "Gagal memuat gambar";
+  });
+
+  // Kalau gambar udah ke-cache, langsung hilangkan skeleton
+  if (img.complete && img.naturalWidth > 0) {
+    skeleton.remove();
+  }
+
+  function close() {
+    document.body.style.overflow = "";
+    modal.style.animation = "pinFadeOut 0.2s ease forwards";
+    const card = modal.querySelector(".pin-modal-card");
+    if (card) card.style.animation = "pinPopOut 0.2s ease forwards";
+    setTimeout(() => modal.remove(), 200);
+  }
+
+  modal.querySelector(".pin-modal-close").addEventListener("click", close);
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  document.addEventListener("keydown", function escHandler(e) {
+    if (e.key === "Escape") { close(); document.removeEventListener("keydown", escHandler); }
+  });
+
+  // Swipe down untuk close di HP
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  const card = modal.querySelector(".pin-modal-card");
+  card.addEventListener("touchstart", (e) => {
+    touchStartY = e.touches[0].clientY;
+    touchCurrentY = touchStartY;
+  }, { passive: true });
+  card.addEventListener("touchmove", (e) => {
+    touchCurrentY = e.touches[0].clientY;
+    const diff = touchCurrentY - touchStartY;
+    if (diff > 0) {
+      card.style.transform = `translateY(${diff * 0.4}px)`;
+      card.style.opacity = String(Math.max(0.5, 1 - diff / 400));
+    }
+  }, { passive: true });
+  card.addEventListener("touchend", () => {
+    const diff = touchCurrentY - touchStartY;
+    if (diff > 100) {
+      close();
+    } else {
+      card.style.transform = "";
+      card.style.opacity = "";
+    }
+  }, { passive: true });
 }
 
 
