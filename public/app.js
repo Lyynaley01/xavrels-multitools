@@ -86,6 +86,7 @@ const previewName = $("#previewName");
 const previewSize = $("#previewSize");
 const clearFile = $("#clearFile");
 
+let originalFormHTML = null;  // ← TAMBAH INI
 let activeTool = null;
 let telegramUrl = "https://t.me/";
 let activeObjectUrl = null;
@@ -347,7 +348,14 @@ function switchInputMode(mode) {
   inputMode = mode;
   $$(".input-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mode === mode));
 
-  // FPRESET pakai 2 mode: url = link video, upload = search keyword
+  // Query ulang tiap kali (karena form bisa di-restore)
+  const modeUrlEl = document.getElementById("modeUrl");
+  const modeUploadEl = document.getElementById("modeUpload");
+  const inputEl = document.getElementById("toolInput");
+  const inputLabelEl = document.getElementById("inputLabel");
+  const submitLabelEl = document.getElementById("submitLabel");
+
+  // ── FPRESET pakai 2 mode: url = link video, upload = search keyword ──
   if (activeTool === "fpreset") {
     const info = toolInfo.fpreset;
     const urlTab = document.querySelector('.input-tab[data-mode="url"]');
@@ -365,12 +373,14 @@ function switchInputMode(mode) {
         uploadTab.querySelector(".tab-text").textContent = "CARI KEYWORD";
       }
 
-      if (modeUrl) modeUrl.hidden = false;
-      if (modeUpload) modeUpload.hidden = true;
-      $("#inputLabel").textContent = info.label;
-      input.placeholder = info.placeholder;
-      input.type = "url";
-      submitLabel.textContent = info.button;
+      if (modeUrlEl) modeUrlEl.hidden = false;
+      if (modeUploadEl) modeUploadEl.hidden = true;
+      if (inputLabelEl) inputLabelEl.textContent = info.label;
+      if (inputEl) {
+        inputEl.placeholder = info.placeholder;
+        inputEl.type = "url";
+      }
+      if (submitLabelEl) submitLabelEl.textContent = info.button;
     } else {
       // Tab tetap sama labelnya
       if (urlTab) {
@@ -382,13 +392,14 @@ function switchInputMode(mode) {
         uploadTab.querySelector(".tab-text").textContent = "CARI KEYWORD";
       }
 
-      if (modeUrl) modeUrl.hidden = true;
-      if (modeUpload) modeUpload.hidden = true; // fpreset gak pakai upload file
-      if (modeUrl) modeUrl.hidden = false;
-      $("#inputLabel").textContent = "Keyword pencarian video";
-      input.placeholder = "contoh: JJ kicau mania";
-      input.type = "text";
-      submitLabel.textContent = info.searchButton;
+      if (modeUrlEl) modeUrlEl.hidden = false;
+      if (modeUploadEl) modeUploadEl.hidden = true;
+      if (inputLabelEl) inputLabelEl.textContent = "Keyword pencarian video";
+      if (inputEl) {
+        inputEl.placeholder = "contoh: JJ kicau mania";
+        inputEl.type = "text";
+      }
+      if (submitLabelEl) submitLabelEl.textContent = info.searchButton;
     }
     clearResult();
     return;
@@ -407,14 +418,21 @@ function switchInputMode(mode) {
   }
 
   if (mode === "url") {
-    if (modeUrl) modeUrl.hidden = false;
-    if (modeUpload) modeUpload.hidden = true;
+    if (modeUrlEl) modeUrlEl.hidden = false;
+    if (modeUploadEl) modeUploadEl.hidden = true;
   } else {
-    if (modeUrl) modeUrl.hidden = true;
-    if (modeUpload) modeUpload.hidden = false;
+    if (modeUrlEl) modeUrlEl.hidden = true;
+    if (modeUploadEl) modeUploadEl.hidden = false;
   }
   clearResult();
 }
+
+if (inputTabs) inputTabs.addEventListener("click", (e) => {
+  const tab = e.target.closest(".input-tab");
+  if (!tab) return;
+  e.preventDefault();
+  switchInputMode(tab.dataset.mode);
+});
 
 if (inputTabs) inputTabs.addEventListener("click", (e) => {
   const tab = e.target.closest(".input-tab");
@@ -2520,6 +2538,23 @@ function formatNumber(n) {
 /* =========================================================
    TOOL NAVIGATION
    ========================================================= */
+   /* =========================================================
+   RESTORE ORIGINAL FORM
+   =========================================================
+   Custom tool (faceswap, gen-ovo, dll) nge-replace #toolForm
+   dengan UI mereka sendiri. Function ini restore form asli
+   biar tool generic (HD, Remove BG, dll) tetap jalan.
+   ========================================================= */
+function restoreOriginalForm() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  if (originalFormHTML) {
+    formEl.replaceChildren();
+    formEl.innerHTML = originalFormHTML;
+  }
+}
+
 function openTool(key, updateHistory = true) {
   if (key === "amprem") {
     window.open(telegramUrl, "_blank", "noopener,noreferrer");
@@ -2723,16 +2758,76 @@ if (key === "faceswap") {
     return;
   }
 
-  // ═══════════════════════════════════════════════
-  // GENERIC TOOL (HD, Remove BG, React, Pinterest, Spotify, Fpreset)
-  // ═══════════════════════════════════════════════
-  $("#workspaceIssue").textContent = info.issue;
-  $("#workspaceIcon").textContent = info.icon;
-  $("#workspaceCategory").textContent = info.category;
-  $("#workspaceDecoNumber").textContent = info.number;
+// ═══════════════════════════════════════════════
+// GENERIC TOOL (HD, Remove BG, React, Pinterest, Spotify, Fpreset)
+// ═══════════════════════════════════════════════
+restoreOriginalForm();  // ← TAMBAH INI
 
-  const titleEl = $("#workspaceTitle");
-  titleEl.replaceChildren();
+// Re-attach event listeners karena DOM baru di-restore
+const inputTabs2 = document.getElementById("inputTabs");
+const modeUrl2 = document.getElementById("modeUrl");
+const modeUpload2 = document.getElementById("modeUpload");
+const input2 = document.getElementById("toolInput");
+const extra2 = document.getElementById("toolExtra");
+const submit2 = document.getElementById("submitBtn");
+const submitLabel2 = document.getElementById("submitLabel");
+const dropzone2 = document.getElementById("dropzone");
+const fileInput2 = document.getElementById("fileInput");
+const clearFile2 = document.getElementById("clearFile");
+
+if (inputTabs2) {
+  inputTabs2.addEventListener("click", (e) => {
+    const tab = e.target.closest(".input-tab");
+    if (!tab) return;
+    e.preventDefault();
+    switchInputMode(tab.dataset.mode);
+  });
+}
+if (dropzone2) {
+  dropzone2.addEventListener("click", (e) => {
+    if (e.target.closest(".clear-file")) return;
+    fileInput2.click();
+  });
+  dropzone2.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput2.click(); }
+  });
+  ["dragenter", "dragover"].forEach(evt => {
+    dropzone2.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      dropzone2.classList.add("dragover");
+    });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    dropzone2.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      dropzone2.classList.remove("dragover");
+    });
+  });
+  dropzone2.addEventListener("drop", (e) => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file) setFile(file);
+  });
+}
+if (fileInput2) {
+  fileInput2.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) setFile(file);
+  });
+}
+if (clearFile2) {
+  clearFile2.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearSelectedFile();
+  });
+}
+
+$("#workspaceIssue").textContent = info.issue;
+$("#workspaceIcon").textContent = info.icon;
+$("#workspaceCategory").textContent = info.category;
+$("#workspaceDecoNumber").textContent = info.number;
+
+const titleEl = $("#workspaceTitle");
+titleEl.replaceChildren();
   const lead = document.createElement("span"); lead.textContent = info.titleLead;
   const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
   titleEl.append(lead, document.createTextNode(" "), accent);
@@ -4191,6 +4286,17 @@ if (document.readyState === "loading") {
 } else {
   autoCountAndNumberTools();
 }
+
+/* =========================================================
+   Cache form HTML asli buat restore
+   ========================================================= */
+(function cacheOriginalForm() {
+  const formEl = document.getElementById("toolForm");
+  if (formEl) {
+    originalFormHTML = formEl.innerHTML;
+    console.log("[XAVRELS] Original form HTML cached");
+  }
+})();
 
 /* ===== Start ===== */
 syncRoute();
