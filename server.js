@@ -120,8 +120,18 @@ function validateMasterKey(req) {
 
 function requireAuth(req, res, next) {
   if (validateMasterKey(req)) { req.authMode = "master"; return next(); }
-  const sessionResult = validateSession(req);
+
+  // Support token dari query string juga (buat <audio>, <img>, dll yang gak bisa kirim header)
+  let sessionResult = validateSession(req);
+  if (!sessionResult.ok) {
+    const queryToken = req.query?.token;
+    if (queryToken && typeof queryToken === "string") {
+      const fakeReq = { headers: { "x-session-token": queryToken } };
+      sessionResult = validateSession(fakeReq);
+    }
+  }
   if (sessionResult.ok) { req.authMode = "session"; req.session = sessionResult.session; return next(); }
+
   return res.status(401).json({
     ok: false,
     error: "Akses ditolak. Butuh API key atau session token yang valid."
@@ -384,6 +394,84 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("❌ [/api/pinterest]", err.message);
     sendError(res, err);
+  }
+});
+
+
+/* ============================================================
+   /api/stream — Proxy audio (biar Content-Type bener)
+   ============================================================ */
+app.get("/api/stream", requireAuth, async (req, res) => {
+  try {
+    const audioUrl = safeText(req.query?.url, 2000);
+    if (!audioUrl) throw new Error("Parameter url wajib.");
+
+    // Validasi URL (harus HTTPS, bukan privat)
+    const validUrl = validatePublicHttpsUrl(audioUrl);
+
+    // Whitelist domain — cuma boleh stream dari provider audio
+    const u = new URL(validUrl);
+    const allowedHosts = [
+      "rapid.spotidown.app",
+      "spotidown.app",
+      "googlevideo.com",
+      "youtube.com",
+      "ytimg.com"
+    ];
+    const isAllowed = allowedHosts.some(h => u.hostname === h || u.hostname.endsWith("." + h));
+    if (!isAllowed) {
+      throw new Error("Domain audio tidak diizinkan.");
+    }
+
+    // Forward Range header kalau ada (buat seek/pause)
+    const rangeHeader = req.headers["range"];
+    const upstreamHeaders = {
+      "User-Agent": BROWSER_UA,
+      "Accept": "*/*"
+    };
+    if (rangeHeader) upstreamHeaders["Range"] = rangeHeader;
+
+    // Request ke provider
+    const upstream = await http.get(validUrl, {
+      responseType: "stream",
+      timeout: 60_000,
+      headers: upstreamHeaders,
+      validateStatus: (s) => s >= 200 && s < 400
+    });
+
+    // Set header ke browser — paksa jadi audio/mpeg
+    const upstreamType = String(upstream.headers["content-type"] || "").toLowerCase();
+    let contentType = "audio/mpeg";
+    if (upstreamType.startsWith("audio/")) contentType = upstreamType;
+
+    res.set("Content-Type", contentType);
+    res.set("Accept-Ranges", "bytes");
+    res.set("Cache-Control", "public, max-age=3600");
+
+    // Forward Content-Length & Content-Range kalau ada
+    if (upstream.headers["content-length"]) {
+      res.set("Content-Length", upstream.headers["content-length"]);
+    }
+    if (upstream.headers["content-range"]) {
+      res.set("Content-Range", upstream.headers["content-range"]);
+    }
+    if (upstream.status === 206) {
+      res.status(206);
+    }
+
+    // Stream ke browser
+    upstream.data.pipe(res);
+
+    upstream.data.on("error", (err) => {
+      console.error("❌ [stream] Pipe error:", err.message);
+      if (!res.headersSent) res.status(500).end();
+    });
+
+  } catch (err) {
+    console.error("❌ [/api/stream]", err.message);
+    if (!res.headersSent) {
+      sendError(res, err);
+    }
   }
 });
 

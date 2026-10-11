@@ -621,15 +621,19 @@ function renderMusic(data) {
     playerWrap.className = "music-player";
 
     const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.preload = "metadata";
-    audio.src = item.audio;
-    audio.controlsList = "nodownload";
+audio.controls = true;
+audio.preload = "metadata";
+audio.controlsList = "nodownload";
 
-    // Fallback kalau audio gagal load
-    audio.addEventListener("error", () => {
-      playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio tidak dapat diputar. Coba refresh halaman.</div>`;
-    });
+// Pakai proxy server supaya Content-Type benar (audio/mpeg)
+const streamUrl = `/api/stream?url=${encodeURIComponent(item.audio)}&token=${encodeURIComponent(sessionToken || "")}`;
+audio.src = streamUrl;
+
+// Tambah header session token via event listener
+// (audio tag gak bisa kirim custom header, jadi kita pakai query trick)
+audio.addEventListener("error", () => {
+  playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio tidak dapat diputar. Coba refresh halaman.</div>`;
+});
 
     playerWrap.append(audio);
     card.append(playerWrap);
