@@ -69,7 +69,7 @@ if (!MASTER_API_KEY) console.warn("⚠️  MASTER_API_KEY belum di-set.");
 
 const sessionStore = new Map();
 const SESSION_TTL_MS = 10 * 60 * 1000;
-const SESSION_MAX_USES = 30;
+const SESSION_MAX_USES = 10;
 
 function pruneSessions() {
   const now = Date.now();
@@ -142,6 +142,26 @@ function requireAuth(req, res, next) {
 /* ============================================================
    /api/session
    ============================================================ */
+/* ===== Strict origin validation ===== */
+function isAllowedRequestOrigin(origin, referer, allowedOrigins) {
+  // Cek Origin header (paling strict)
+  if (origin) {
+    return allowedOrigins.includes(origin);
+  }
+  // Fallback ke Referer (parse hostname persis)
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      const refOrigin = `${refUrl.protocol}//${refUrl.host}`;
+      return allowedOrigins.includes(refOrigin);
+    } catch (_) {
+      return false;
+    }
+  }
+  // Gak ada origin & referer → TOLAK
+  return false;
+}
+
 app.post("/api/session", (req, res) => {
   try {
     const origin = req.headers.origin || "";
@@ -153,11 +173,9 @@ app.post("/api/session", (req, res) => {
       "http://localhost:3000", "http://127.0.0.1:3000"
     ];
 
-    const isFromAllowedOrigin =
-      !origin || allowedOrigins.some(o => origin === o || referer.startsWith(o));
-
-    if (!isFromAllowedOrigin) {
-      console.log(`🚫 [/api/session] Origin ditolak: ${origin}`);
+    // 🔥 STRICT: wajib ada Origin ATAU Referer yang match persis
+    if (!isAllowedRequestOrigin(origin, referer, allowedOrigins)) {
+      console.log(`🚫 [/api/session] Ditolak — origin: "${origin}" referer: "${referer}"`);
       return res.status(403).json({ ok: false, error: "Origin tidak diizinkan." });
     }
 
@@ -171,10 +189,10 @@ app.post("/api/session", (req, res) => {
     }
 
     const token = createSession(req);
-res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-res.set("Pragma", "no-cache");
-res.set("Expires", "0");
-res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
   } catch (err) {
     console.error("❌ [/api/session]", err.message);
     res.status(500).json({ ok: false, error: "Gagal membuat session." });
