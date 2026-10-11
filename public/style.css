@@ -3287,3 +3287,358 @@ footer>span:nth-child(2){order:3;width:100%}
 .art-cecan {
   background-color: #ef7a91;
 }
+/* =========================================================
+   PROMO POPUP — WhatsApp Channel
+   ========================================================= */
+.promo-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  pointer-events: none;
+}
+.promo-popup[hidden] {
+  display: none !important;
+}
+.promo-popup.is-visible {
+  pointer-events: auto;
+}
+
+/* ── Backdrop ── */
+.promo-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 12, 22, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.promo-popup.is-visible .promo-popup-backdrop {
+  opacity: 1;
+}
+
+/* ── Card ── */
+.promo-popup-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 440px);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 20px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    8px 8px 0 var(--ink);
+  opacity: 0;
+  transform: translateY(20px) scale(0.92);
+  transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow-x: hidden;
+}
+.promo-popup.is-visible .promo-popup-card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ── Close button ── */
+.promo-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  color: var(--ink);
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.2s, color 0.2s, border-color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.promo-close:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+  transform: rotate(90deg) scale(1.1);
+}
+.promo-close:active {
+  transform: rotate(90deg) scale(0.95);
+}
+
+/* ── Header ala WA ── */
+.promo-header {
+  position: relative;
+  padding: 28px 20px 44px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 55%, #075E54 100%);
+  text-align: center;
+  overflow: hidden;
+}
+.promo-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.12), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08), transparent 40%);
+  pointer-events: none;
+}
+.promo-header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+}
+
+.promo-wa-icon {
+  position: relative;
+  z-index: 1;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  background: #fff;
+  color: #25D366;
+  border-radius: 50%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  animation: promoIconFloat 3s ease-in-out infinite;
+}
+.promo-wa-icon svg {
+  filter: drop-shadow(0 2px 4px rgba(37, 211, 102, 0.4));
+}
+
+@keyframes promoIconFloat {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-6px) rotate(3deg); }
+}
+
+.promo-badge {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Body ── */
+.promo-body {
+  padding: 8px 24px 0;
+  text-align: center;
+}
+
+.promo-title {
+  font-family: "Bangers", cursive;
+  font-size: 26px;
+  letter-spacing: 1.2px;
+  line-height: 1.15;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+.promo-title span {
+  display: block;
+  color: #128C7E;
+  -webkit-text-stroke: 0.5px var(--ink);
+  text-shadow: 2px 2px 0 rgba(37, 211, 102, 0.25);
+}
+
+.promo-text {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0 0 18px;
+  font-weight: 600;
+}
+.promo-text b {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+/* ── Feature list ── */
+.promo-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: #f0fdf4;
+  border: 1.5px dashed #25D366;
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+.promo-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #166534;
+  text-align: left;
+}
+.promo-feature-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1.5px solid #25D366;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* ── Actions ── */
+.promo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 24px 24px;
+}
+
+.promo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.promo-btn-primary {
+  background: linear-gradient(135deg, #25D366, #1da851);
+  color: #fff;
+  border-color: #128C7E;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.promo-btn-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transition: left 0.6s ease;
+}
+.promo-btn-primary:hover::before {
+  left: 100%;
+}
+.promo-btn-primary:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+.promo-btn-primary:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.promo-btn-arrow {
+  margin-left: auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.promo-btn-secondary {
+  background: #fff;
+  color: var(--ink);
+  border-color: #cfd2d9;
+  box-shadow: 3px 3px 0 #cfd2d9;
+}
+.promo-btn-secondary:hover {
+  background: #f7f8fb;
+  border-color: var(--ink);
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.promo-btn-secondary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+/* ── Responsive ── */
+@media (max-width: 620px) {
+  .promo-popup {
+    padding: 14px;
+    align-items: end;
+  }
+  .promo-popup-card {
+    border-radius: 20px 20px 16px 16px;
+    box-shadow:
+      0 -8px 40px rgba(0, 0, 0, 0.25),
+      0 0 0 0 transparent;
+    transform: translateY(60px) scale(0.95);
+  }
+  .promo-popup.is-visible .promo-popup-card {
+    transform: translateY(0) scale(1);
+  }
+  .promo-header {
+    padding: 24px 16px 38px;
+  }
+  .promo-wa-icon {
+    width: 66px;
+    height: 66px;
+  }
+  .promo-wa-icon svg {
+    width: 34px;
+    height: 34px;
+  }
+  .promo-body {
+    padding: 6px 18px 0;
+  }
+  .promo-title {
+    font-size: 22px;
+  }
+  .promo-text {
+    font-size: 11.5px;
+  }
+  .promo-feature {
+    font-size: 11px;
+  }
+  .promo-actions {
+    padding: 16px 18px 20px;
+  }
+  .promo-btn {
+    font-size: 11px;
+    padding: 13px 16px;
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .promo-popup-card,
+  .promo-popup-backdrop,
+  .promo-wa-icon,
+  .promo-btn-primary::before {
+    transition: none !important;
+    animation: none !important;
+  }
+}

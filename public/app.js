@@ -2504,6 +2504,113 @@ else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider
   });
 }
 
+/* =========================================================
+   PROMO POPUP — WhatsApp Channel
+   Muncul sekali per user (pakai localStorage).
+   Kalau user klik "Nanti Saja" atau close → gak muncul lagi.
+   ========================================================= */
+(function initPromoPopup() {
+  const POPUP_KEY = "xavrels_promo_dismissed_v1";
+  const SHOW_DELAY = 1200; // 1.2 detik biar halaman selesai load dulu
+  const POPUP_URL = "https://whatsapp.com/channel/0029Vb82UlD30LKGBwvlhB28";
+
+  const popup = document.getElementById("promoPopup");
+  const backdrop = document.getElementById("promoBackdrop");
+  const card = document.getElementById("promoCard");
+  const closeBtn = document.getElementById("promoClose");
+  const laterBtn = document.getElementById("promoLaterBtn");
+  const joinBtn = document.getElementById("promoJoinBtn");
+
+  if (!popup || !card) {
+    console.warn("[PROMO] Elemen popup gak ketemu");
+    return;
+  }
+
+  // ── Cek udah pernah dismiss ──
+  let dismissed = false;
+  try {
+    dismissed = localStorage.getItem(POPUP_KEY) === "true";
+  } catch (_) {
+    // localStorage bisa error di private mode — fallback: muncul terus
+    dismissed = false;
+  }
+
+  if (dismissed) {
+    console.log("[PROMO] User udah pernah dismiss — skip");
+    return;
+  }
+
+  // ── Function buka popup ──
+  function openPopup() {
+    popup.hidden = false;
+    // Force reflow biar transition jalan
+    void popup.offsetWidth;
+    requestAnimationFrame(() => {
+      popup.classList.add("is-visible");
+    });
+
+    // Kunci scroll body
+    document.body.style.overflow = "hidden";
+
+    // Focus ke close button (aksesibilitas)
+    setTimeout(() => closeBtn?.focus({ preventScroll: true }), 500);
+
+    console.log("[PROMO] Popup muncul");
+  }
+
+  // ── Function tutup popup ──
+  function closePopup() {
+    popup.classList.remove("is-visible");
+    document.body.style.overflow = "";
+
+    setTimeout(() => {
+      popup.hidden = true;
+    }, 400);
+
+    // Simpan ke localStorage biar gak muncul lagi
+    try {
+      localStorage.setItem(POPUP_KEY, "true");
+    } catch (_) {}
+
+    console.log("[PROMO] Popup ditutup & di-dismiss");
+  }
+
+  // ── Event: close button ──
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closePopup);
+  }
+
+  // ── Event: nanti saja ──
+  if (laterBtn) {
+    laterBtn.addEventListener("click", closePopup);
+  }
+
+  // ── Event: klik backdrop = close ──
+  if (backdrop) {
+    backdrop.addEventListener("click", closePopup);
+  }
+
+  // ── Event: ESC = close ──
+  document.addEventListener("keydown", function escHandler(e) {
+    if (e.key === "Escape" && !popup.hidden) {
+      closePopup();
+      document.removeEventListener("keydown", escHandler);
+    }
+  });
+
+  // ── Event: klik join channel ──
+  if (joinBtn) {
+    joinBtn.addEventListener("click", () => {
+      console.log("[PROMO] User klik Join Channel");
+      // Auto-close setelah user klik join (biar gak nutupin web)
+      setTimeout(closePopup, 600);
+    });
+  }
+
+  // ── Munculin popup setelah delay ──
+  setTimeout(openPopup, SHOW_DELAY);
+})();
+
 
 /* ===== Start ===== */
 syncRoute();
