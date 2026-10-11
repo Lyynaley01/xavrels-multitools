@@ -1,5 +1,5 @@
 /* =========================================================
-   XAVRELS MULTITOOLS — Main Script (FINAL + SESSION)
+   XAVRELS MULTITOOLS — Main Script (FINAL)
    ========================================================= */
 
 /* ===== Block Zoom ===== */
@@ -25,7 +25,7 @@ const $$ = (selector) => document.querySelectorAll(selector);
 
 
 /* =========================================================
-   SESSION TOKEN — auto-fetch, auto-refresh
+   SESSION TOKEN
    ========================================================= */
 let sessionToken = null;
 let sessionExpiresAt = 0;
@@ -33,13 +33,7 @@ let sessionPromise = null;
 
 async function ensureSession() {
   const now = Date.now();
-
-  // Masih valid? pakai yang lama
-  if (sessionToken && sessionExpiresAt > now + 30_000) {
-    return sessionToken;
-  }
-
-  // Cegah request paralel — pakai promise yang sama
+  if (sessionToken && sessionExpiresAt > now + 30_000) return sessionToken;
   if (sessionPromise) return sessionPromise;
 
   sessionPromise = (async () => {
@@ -51,7 +45,6 @@ async function ensureSession() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!data.ok || !data.token) throw new Error("Token tidak valid");
-
       sessionToken = data.token;
       sessionExpiresAt = now + (data.expiresIn || 600) * 1000;
       console.log("[SESSION] Token refreshed, expired at", new Date(sessionExpiresAt).toLocaleTimeString());
@@ -67,13 +60,8 @@ async function ensureSession() {
   return sessionPromise;
 }
 
-// Pre-fetch saat page load
 ensureSession().catch(() => {});
-
-// Refresh otomatis tiap 8 menit (sebelum expired 10 menit)
-setInterval(() => {
-  ensureSession().catch(() => {});
-}, 8 * 60 * 1000);
+setInterval(() => { ensureSession().catch(() => {}); }, 8 * 60 * 1000);
 
 
 /* ===== Element cache ===== */
@@ -147,7 +135,7 @@ const toolInfo = {
   spotify: {
     title: "MUSIC FINDER", titleLead: "MUSIC", titleAccent: "FINDER", issue: "TOOL 05", number: "05",
     category: "MUSIC LAB", icon: "♫",
-    description: "Cari lagu berdasarkan judul atau artis, lalu buka detail hasil yang ditemukan.",
+    description: "Cari lagu berdasarkan judul atau artis, lalu putar preview-nya langsung di sini.",
     tip: "Coba kombinasi judul lagu dan nama artis untuk hasil yang lebih tepat.",
     label: "Judul lagu atau nama artis", placeholder: "judul lagu atau nama artis", inputType: "text",
     endpoint: "api/spotify", button: "FIND MUSIC",
@@ -159,7 +147,6 @@ const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 
 
-/* ===== Guard elemen wajib ===== */
 ["homeView","toolView","toolForm","toolInput","toolExtra","submitBtn","submitLabel","resultArea","resultShell"].forEach(id => {
   if (!document.getElementById(id)) console.error(`[XAVRELS] Elemen #${id} tidak ditemukan di DOM!`);
 });
@@ -179,7 +166,7 @@ if (location.protocol !== "file:") {
 
 
 /* =========================================================
-   FILE UPLOAD HANDLING
+   FILE UPLOAD
    ========================================================= */
 function formatBytes(bytes) {
   if (!bytes) return "0 B";
@@ -191,7 +178,6 @@ function formatBytes(bytes) {
 
 function setFile(file) {
   if (!file) return;
-
   if (!ALLOWED_TYPES.includes(file.type)) {
     showMessage("Format file tidak didukung. Gunakan PNG, JPG, WEBP, atau GIF.", "error");
     return;
@@ -200,9 +186,7 @@ function setFile(file) {
     showMessage(`File terlalu besar (${formatBytes(file.size)}). Maksimal 10 MB.`, "error");
     return;
   }
-
   selectedFile = file;
-
   const reader = new FileReader();
   reader.onload = (ev) => {
     previewImg.src = ev.target.result;
@@ -229,22 +213,17 @@ if (dropzone) {
     fileInput.click();
   });
   dropzone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fileInput.click();
-    }
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
   });
   ["dragenter", "dragover"].forEach(evt => {
     dropzone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       dropzone.classList.add("dragover");
     });
   });
   ["dragleave", "drop"].forEach(evt => {
     dropzone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       dropzone.classList.remove("dragover");
     });
   });
@@ -254,19 +233,15 @@ if (dropzone) {
   });
 }
 
-if (fileInput) {
-  fileInput.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) setFile(file);
-  });
-}
+if (fileInput) fileInput.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (file) setFile(file);
+});
 
-if (clearFile) {
-  clearFile.addEventListener("click", (e) => {
-    e.stopPropagation();
-    clearSelectedFile();
-  });
-}
+if (clearFile) clearFile.addEventListener("click", (e) => {
+  e.stopPropagation();
+  clearSelectedFile();
+});
 
 document.addEventListener("paste", (e) => {
   if (!activeTool || !toolInfo[activeTool]?.supportsUpload) return;
@@ -275,11 +250,7 @@ document.addEventListener("paste", (e) => {
   for (const item of items) {
     if (item.type.startsWith("image/")) {
       const file = item.getAsFile();
-      if (file) {
-        e.preventDefault();
-        setFile(file);
-        break;
-      }
+      if (file) { e.preventDefault(); setFile(file); break; }
     }
   }
 });
@@ -288,9 +259,7 @@ document.addEventListener("paste", (e) => {
 /* ===== Input mode tabs ===== */
 function switchInputMode(mode) {
   inputMode = mode;
-  $$(".input-tab").forEach(tab => {
-    tab.classList.toggle("active", tab.dataset.mode === mode);
-  });
+  $$(".input-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mode === mode));
   if (mode === "url") {
     if (modeUrl) modeUrl.hidden = false;
     if (modeUpload) modeUpload.hidden = true;
@@ -301,28 +270,20 @@ function switchInputMode(mode) {
   clearResult();
 }
 
-if (inputTabs) {
-  inputTabs.addEventListener("click", (e) => {
-    const tab = e.target.closest(".input-tab");
-    if (!tab) return;
-    e.preventDefault();
-    switchInputMode(tab.dataset.mode);
-  });
-}
+if (inputTabs) inputTabs.addEventListener("click", (e) => {
+  const tab = e.target.closest(".input-tab");
+  if (!tab) return;
+  e.preventDefault();
+  switchInputMode(tab.dataset.mode);
+});
 
 
 /* =========================================================
    RESULT HELPERS
    ========================================================= */
 function clearResult() {
-  if (activeObjectUrl) {
-    URL.revokeObjectURL(activeObjectUrl);
-    activeObjectUrl = null;
-  }
-  if (activeBeforeUrl && activeBeforeUrl.startsWith("blob:")) {
-    URL.revokeObjectURL(activeBeforeUrl);
-    activeBeforeUrl = null;
-  }
+  if (activeObjectUrl) { URL.revokeObjectURL(activeObjectUrl); activeObjectUrl = null; }
+  if (activeBeforeUrl && activeBeforeUrl.startsWith("blob:")) { URL.revokeObjectURL(activeBeforeUrl); activeBeforeUrl = null; }
   if (resultArea) resultArea.replaceChildren();
   if (resultShell) resultShell.hidden = true;
   const note = $("#resultHeadingNote");
@@ -354,11 +315,8 @@ function renderImageResult(response) {
 
     activeBeforeUrl = null;
     if (activeTool === "hd" || activeTool === "remove-bg") {
-      if (selectedFile) {
-        activeBeforeUrl = URL.createObjectURL(selectedFile);
-      } else if (input.value.trim()) {
-        activeBeforeUrl = input.value.trim();
-      }
+      if (selectedFile) activeBeforeUrl = URL.createObjectURL(selectedFile);
+      else if (input.value.trim()) activeBeforeUrl = input.value.trim();
     }
 
     const canShowBeforeAfter = activeTool === "hd" && !!activeBeforeUrl;
@@ -486,13 +444,10 @@ function openBeforeAfterModal({ title, beforeUrl, afterUrl }) {
     handle.style.left = `${pos}%`;
     handle.setAttribute("aria-valuenow", String(Math.round(pos)));
   }
-
   function updateFromEvent(clientX) {
     const rect = slider.getBoundingClientRect();
-    const x = clientX - rect.left;
-    setPosition((x / rect.width) * 100);
+    setPosition(((clientX - rect.left) / rect.width) * 100);
   }
-
   function onPointerDown(e) {
     dragging = true;
     slider.classList.add("ba-dragging");
@@ -504,10 +459,7 @@ function openBeforeAfterModal({ title, beforeUrl, afterUrl }) {
     updateFromEvent(e.touches ? e.touches[0].clientX : e.clientX);
     e.preventDefault();
   }
-  function onPointerUp() {
-    dragging = false;
-    slider.classList.remove("ba-dragging");
-  }
+  function onPointerUp() { dragging = false; slider.classList.remove("ba-dragging"); }
 
   slider.addEventListener("mousedown", onPointerDown);
   window.addEventListener("mousemove", onPointerMove);
@@ -533,14 +485,9 @@ function openBeforeAfterModal({ title, beforeUrl, afterUrl }) {
   }
 
   modal.querySelector(".ba-modal-close").addEventListener("click", close);
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) close();
-  });
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
   document.addEventListener("keydown", function escHandler(e) {
-    if (e.key === "Escape") {
-      close();
-      document.removeEventListener("keydown", escHandler);
-    }
+    if (e.key === "Escape") { close(); document.removeEventListener("keydown", escHandler); }
   });
 
   setPosition(50);
@@ -548,7 +495,7 @@ function openBeforeAfterModal({ title, beforeUrl, afterUrl }) {
 
 
 /* =========================================================
-   RENDER PINTEREST / MUSIC
+   RENDER PINTEREST
    ========================================================= */
 function renderPinterest(data) {
   const results = Array.isArray(data.results) ? data.results : [];
@@ -589,44 +536,117 @@ function renderPinterest(data) {
   if (note) note.textContent = `${results.length} visual`;
 }
 
+
+/* =========================================================
+   RENDER MUSIC — Thumbnail utama + info + audio player
+   ========================================================= */
 function renderMusic(data) {
   const item = data.result || {};
   resultShell.hidden = false;
   resultArea.replaceChildren();
+
   const card = document.createElement("article");
   card.className = "music-result-card";
+
+  /* ===== Thumbnail utama (background hero) ===== */
+  const hero = document.createElement("div");
+  hero.className = "music-hero";
+
+  if (item.thumbnail) {
+    const bg = document.createElement("div");
+    bg.className = "music-hero-bg";
+    bg.style.backgroundImage = `url("${item.thumbnail}")`;
+    hero.append(bg);
+  }
+
+  const heroOverlay = document.createElement("div");
+  heroOverlay.className = "music-hero-overlay";
+
   const cover = document.createElement("div");
-  cover.className = "music-cover";
+  cover.className = "music-hero-cover";
   if (item.thumbnail) {
     const img = document.createElement("img");
     img.src = item.thumbnail;
-    img.alt = "Artwork lagu";
+    img.alt = "Cover lagu";
     img.loading = "lazy";
     cover.append(img);
   } else {
     cover.textContent = "♫";
   }
-  const info = document.createElement("div");
-  info.className = "music-result-info";
-  const title = document.createElement("h3");
-  title.textContent = item.title || "Hasil musik";
-  const artist = document.createElement("p");
-  artist.textContent = item.artist || "Artis tidak tersedia";
-  const tags = document.createElement("div");
-  tags.className = "music-tags";
-  [item.duration ? `◷ ${item.duration}` : "", item.source || "MUSIC RESULT"].filter(Boolean).forEach(value => {
-    const tag = document.createElement("span"); tag.textContent = value; tags.append(tag);
-  });
-  info.append(title, artist, tags);
-  card.append(cover, info);
+  heroOverlay.append(cover);
+
+  const heroInfo = document.createElement("div");
+  heroInfo.className = "music-hero-info";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "music-hero-title";
+  titleEl.textContent = item.title || "Judul tidak diketahui";
+
+  const artistEl = document.createElement("p");
+  artistEl.className = "music-hero-artist";
+  artistEl.textContent = item.artist || "Artis tidak diketahui";
+
+  heroInfo.append(titleEl, artistEl);
+
+  const metaRow = document.createElement("div");
+  metaRow.className = "music-hero-meta";
+
+  if (item.duration) {
+    const dur = document.createElement("span");
+    dur.className = "music-meta-chip";
+    dur.innerHTML = `◷ <b>${item.duration}</b>`;
+    metaRow.append(dur);
+  }
+
+  if (item.source) {
+    const src = document.createElement("span");
+    src.className = "music-meta-chip music-meta-src";
+    src.textContent = "▶ YouTube";
+    metaRow.append(src);
+  }
+
+  heroInfo.append(metaRow);
+  heroOverlay.append(heroInfo);
+  hero.append(heroOverlay);
+  card.append(hero);
+
+  /* ===== Audio player ===== */
+  if (item.audio) {
+    const player = document.createElement("div");
+    player.className = "music-player";
+
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    audio.src = item.audio;
+    player.append(audio);
+
+    card.append(player);
+  } else if (item.url) {
+    const noAudio = document.createElement("div");
+    noAudio.className = "music-no-audio";
+    noAudio.innerHTML = `🎵 Preview audio tidak tersedia. Klik tombol di bawah untuk membuka di YouTube.`;
+    card.append(noAudio);
+  }
+
+  /* ===== Actions ===== */
+  const actions = document.createElement("div");
+  actions.className = "music-actions";
+
   if (item.url) {
     const open = document.createElement("a");
-    open.className = "download-btn music-open";
-    open.href = item.url; open.target = "_blank"; open.rel = "noopener noreferrer";
-    open.textContent = "OPEN RESULT ↗";
-    card.append(open);
+    open.className = "download-btn";
+    open.href = item.url;
+    open.target = "_blank";
+    open.rel = "noopener noreferrer";
+    open.textContent = "▶  BUKA DI YOUTUBE";
+    actions.append(open);
   }
+
+  if (actions.children.length) card.append(actions);
+
   resultArea.append(card);
+
   const note = $("#resultHeadingNote");
   if (note) note.textContent = "Lagu ditemukan";
 }
@@ -641,10 +661,7 @@ function openTool(key, updateHistory = true) {
     return;
   }
   const info = toolInfo[key];
-  if (!info) {
-    console.warn("[XAVRELS] Tool tidak dikenal:", key);
-    return;
-  }
+  if (!info) { console.warn("[XAVRELS] Tool tidak dikenal:", key); return; }
 
   activeTool = key;
   homeView.hidden = true;
@@ -692,13 +709,9 @@ function openTool(key, updateHistory = true) {
   clearResult();
   document.title = `${info.title} — XAVRELS MULTITOOLS`;
 
-  if (updateHistory && location.hash !== `#tool/${key}`) {
-    location.hash = `tool/${key}`;
-  }
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
   window.scrollTo({ top: 0, behavior: "smooth" });
-  setTimeout(() => {
-    if (inputMode === "url") input.focus({ preventScroll: true });
-  }, 180);
+  setTimeout(() => { if (inputMode === "url") input.focus({ preventScroll: true }); }, 180);
 }
 
 function goHome(updateHistory = true) {
@@ -709,9 +722,7 @@ function goHome(updateHistory = true) {
   document.title = "XAVRELS // MULTITOOLS";
   clearResult();
   clearSelectedFile();
-  if (updateHistory && location.hash) {
-    history.pushState(null, "", `${location.pathname}${location.search}`);
-  }
+  if (updateHistory && location.hash) history.pushState(null, "", `${location.pathname}${location.search}`);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -726,43 +737,29 @@ function syncRoute() {
    EVENT DELEGATION
    ========================================================= */
 let lastOpenTime = 0;
-
 function handleOpenClick(e) {
   const btn = e.target.closest("[data-open]");
   if (!btn) return;
-
   const now = Date.now();
   if (now - lastOpenTime < 250) return;
   lastOpenTime = now;
-
   e.preventDefault();
   e.stopPropagation();
-
   const key = btn.dataset.open;
   console.log("[XAVRELS] Opening tool:", key);
   openTool(key);
 }
-
 document.addEventListener("click", handleOpenClick, true);
 document.addEventListener("pointerup", (e) => {
   const btn = e.target.closest("[data-open]");
   if (!btn) return;
-  if (e.pointerType === "touch") {
-    handleOpenClick(e);
-  }
+  if (e.pointerType === "touch") handleOpenClick(e);
 }, true);
 
-
-/* ===== Back home ===== */
 document.addEventListener("click", (e) => {
-  if (e.target.closest("#backHome")) {
-    e.preventDefault();
-    goHome(true);
-  }
+  if (e.target.closest("#backHome")) { e.preventDefault(); goHome(true); }
 }, true);
 
-
-/* ===== Routing ===== */
 window.addEventListener("hashchange", syncRoute);
 window.addEventListener("popstate", syncRoute);
 
@@ -785,7 +782,7 @@ if (searchInput) {
 
 
 /* =========================================================
-   SUBMIT FORM (dengan session token)
+   SUBMIT FORM
    ========================================================= */
 if (form) {
   form.addEventListener("submit", async event => {
@@ -797,22 +794,17 @@ if (form) {
     const isUploadMode = info.supportsUpload && inputMode === "upload";
 
     if (isUploadMode) {
-      if (!selectedFile) {
-        showMessage("Pilih file gambar dulu, atau switch ke mode URL.", "error");
-        return;
-      }
+      if (!selectedFile) { showMessage("Pilih file gambar dulu, atau switch ke mode URL.", "error"); return; }
       const fd = new FormData();
       fd.append("image", selectedFile, selectedFile.name);
       fetchOptions = { method: "POST", body: fd };
     } else {
       const value = input.value.trim();
       if (!value) return;
-
       const payload = (activeTool === "pinterest" || activeTool === "spotify")
         ? { query: value }
         : { url: value };
       if (activeTool === "react") payload.emoji = extra.value.trim();
-
       fetchOptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -825,28 +817,21 @@ if (form) {
     showMessage("Sedang menghubungi provider dengan aman. Tunggu sebentar…", "loading");
 
     try {
-      // ==== Ambil session token ====
       const token = await ensureSession();
-
-      // ==== Tambah header ke fetchOptions ====
       if (!fetchOptions.headers) fetchOptions.headers = {};
       fetchOptions.headers["X-Session-Token"] = token;
 
-      // ==== Kirim request ====
       let response = await fetch(info.endpoint, fetchOptions);
 
-      // ==== Kalau 401 (token expired/invalid), refresh & retry sekali ====
       if (response.status === 401) {
         console.warn("[SESSION] 401 — refresh token & retry");
-        sessionToken = null;
-        sessionExpiresAt = 0;
+        sessionToken = null; sessionExpiresAt = 0;
         const newToken = await ensureSession();
         fetchOptions.headers["X-Session-Token"] = newToken;
         response = await fetch(info.endpoint, fetchOptions);
       }
 
       const contentType = response.headers.get("content-type") || "";
-
       if (!response.ok) {
         let message = `Request gagal (HTTP ${response.status}).`;
         if (contentType.includes("application/json")) {

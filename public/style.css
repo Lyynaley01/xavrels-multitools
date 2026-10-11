@@ -625,3 +625,201 @@ footer>span:nth-child(2){order:3;width:100%}
 .ba-arrow{font-size:11px}
 .ba-label{font-size:9px;padding:4px 8px}
 }
+/* =========================================================
+   MUSIC RESULT — Hero thumbnail + audio player
+   ========================================================= */
+.music-result-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px solid #d9dce2;
+  background: #fff;
+  border-radius: 0;
+}
+
+/* ==== HERO — thumbnail jadi background utama ==== */
+.music-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1769aa 0%, #0f3d68 100%);
+}
+
+.music-hero-bg {
+  position: absolute;
+  inset: -20px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(24px) saturate(1.4) brightness(0.7);
+  transform: scale(1.15);
+  z-index: 0;
+}
+
+.music-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 20, 38, 0.75) 0%,
+    rgba(15, 20, 38, 0.55) 55%,
+    rgba(15, 20, 38, 0.85) 100%
+  );
+  z-index: 1;
+}
+
+/* ==== Cover kotak ==== */
+.music-hero-cover {
+  flex: 0 0 auto;
+  width: 110px;
+  height: 110px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  font-size: 42px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.music-hero-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ==== Info text ==== */
+.music-hero-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #fff;
+}
+.music-hero-title {
+  font-family: "Bangers", cursive;
+  font-size: clamp(20px, 3.5vw, 30px);
+  letter-spacing: 1px;
+  line-height: 1.1;
+  margin: 0;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+.music-hero-artist {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.music-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.music-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #fff;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.music-meta-chip b { font-weight: 900; }
+.music-meta-src {
+  background: rgba(230, 57, 70, 0.85);
+  border-color: rgba(230, 57, 70, 0.9);
+}
+
+/* ==== Audio Player ==== */
+.music-player {
+  padding: 14px;
+  background: #f7f8fb;
+  border-top: 1px solid #e5e7eb;
+}
+.music-player audio {
+  width: 100%;
+  height: 44px;
+  outline: none;
+  border-radius: 999px;
+  background: #fff;
+}
+.music-player audio::-webkit-media-controls-panel {
+  background: linear-gradient(135deg, #fff9ed, #fff);
+}
+
+/* ==== No audio message ==== */
+.music-no-audio {
+  padding: 14px;
+  background: #fff8df;
+  border-top: 1px solid #f1d985;
+  font-size: 11px;
+  color: #68551b;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* ==== Actions ==== */
+.music-actions {
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+  display: flex;
+  gap: 8px;
+}
+.music-actions .download-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+}
+
+/* ==== Responsive ==== */
+@media (max-width: 620px) {
+  .music-hero { aspect-ratio: 4 / 3; }
+  .music-hero-overlay {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 12px;
+    justify-content: flex-end;
+    background: linear-gradient(
+      to top,
+      rgba(15, 20, 38, 0.92) 0%,
+      rgba(15, 20, 38, 0.65) 55%,
+      rgba(15, 20, 38, 0.35) 100%
+    );
+  }
+  .music-hero-cover {
+    width: 82px;
+    height: 82px;
+    font-size: 32px;
+  }
+  .music-hero-title { font-size: 22px; }
+  .music-hero-artist { font-size: 11px; }
+  .music-meta-chip { font-size: 9px; padding: 3px 8px; }
+  .music-player audio { height: 40px; }
+  .music-actions .download-btn { font-size: 9px; padding: 11px; }
+}
