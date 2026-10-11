@@ -307,57 +307,43 @@ app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
    ============================================================ */
 app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res) => {
   try {
-    let input;
+    let imageUrl;
+
     if (req.file) {
       console.log(`📤 [RMBG] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
-      input = req.file.buffer;
+      imageUrl = await uploadImageToCdn(req.file.buffer, req.file.originalname || "upload.jpg");
+      imageUrl = validatePublicHttpsUrl(imageUrl);
+      console.log(`📤 [RMBG] CDN URL: ${imageUrl}`);
     } else if (req.body?.url) {
-      const imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
-      const inputResponse = await http.get(imageUrl, {
-        responseType: "arraybuffer",
-        headers: { Accept: "image/*" }
-      });
-      const inputType = String(inputResponse.headers["content-type"] || "").toLowerCase();
-      if (!inputType.startsWith("image/")) throw new Error("URL harus mengarah langsung ke file gambar.");
-      input = Buffer.from(inputResponse.data);
+      imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      console.log(`📤 [RMBG] Input URL: ${imageUrl}`);
     } else {
       throw new Error("Kirim url atau file image.");
     }
 
-    if (!input.length || input.length > 10 * 1024 * 1024) throw new Error("Gambar maksimal 10 MB.");
-
-    const cdnUrl = await uploadImageToCdn(input, "upload.jpg");
-
-    const result = await http.post(
-      "https://www.dreamai.art/api/background-remover",
-      { images: [cdnUrl] },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-Device-Id": crypto.randomUUID(),
-          "User-Agent": BROWSER_UA,
-          "Origin": "https://www.dreamai.art",
-          "Referer": "https://www.dreamai.art/en/ai-background-remover"
-        },
-        timeout: 120_000
-      }
-    );
-
-    const outUrl = result.data?.processedImage;
-    if (result.data?.success !== true || typeof outUrl !== "string") {
-      throw new Error("Provider Remove BG gagal memproses gambar.");
-    }
-
-    const outResponse = await http.get(validatePublicHttpsUrl(outUrl), {
+    // Panggil API Nexadev — response binary image langsung
+    const apiUrl = "https://api.nexadev.my.id/tools/remove/";
+    const response = await http.get(apiUrl, {
+      params: { url: imageUrl },
       responseType: "arraybuffer",
-      headers: { Accept: "image/*" }
+      timeout: 90_000,
+      maxContentLength: 12 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/avif,image/webp,image/apng,image/png,image/jpeg,image/*,*/*;q=0.8",
+        "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://api.nexadev.my.id/",
+        "Origin": "https://api.nexadev.my.id"
+      }
     });
 
-    const output = requireImageResponse(outResponse);
-    res.set("Content-Type", "image/png");
+    const output = requireImageResponse(response);
+
+    res.set("Content-Type", response.headers["content-type"] || "image/png");
     res.set("Content-Disposition", 'inline; filename="xavrels-remove-bg.png"');
     res.set("Cache-Control", "no-store");
     res.send(output);
+
   } catch (err) {
     console.error("❌ [/api/remove-bg]", err.message);
     sendError(res, err);
