@@ -434,13 +434,6 @@ if (inputTabs) inputTabs.addEventListener("click", (e) => {
   switchInputMode(tab.dataset.mode);
 });
 
-if (inputTabs) inputTabs.addEventListener("click", (e) => {
-  const tab = e.target.closest(".input-tab");
-  if (!tab) return;
-  e.preventDefault();
-  switchInputMode(tab.dataset.mode);
-});
-
 
 /* =========================================================
    RESULT HELPERS
@@ -2832,49 +2825,76 @@ titleEl.replaceChildren();
   const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
   titleEl.append(lead, document.createTextNode(" "), accent);
 
-  $("#workspaceDescription").textContent = info.description;
-  $("#workspaceTip").textContent = info.tip;
-  $("#panelNumber").textContent = info.number;
-  $("#inputLabel").textContent = info.label;
+  $("#workspaceIssue").textContent = info.issue;
+$("#workspaceIcon").textContent = info.icon;
+$("#workspaceCategory").textContent = info.category;
+$("#workspaceDecoNumber").textContent = info.number;
 
-  input.type = info.inputType;
-  input.placeholder = info.placeholder;
-  input.value = "";
-  input.autocomplete = info.inputType === "url" ? "url" : "off";
+const titleEl = $("#workspaceTitle");
+titleEl.replaceChildren();
+const lead = document.createElement("span"); lead.textContent = info.titleLead;
+const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+titleEl.append(lead, document.createTextNode(" "), accent);
 
-  clearSelectedFile();
+$("#workspaceDescription").textContent = info.description;
+$("#workspaceTip").textContent = info.tip;
+$("#panelNumber").textContent = info.number;
 
-  // Reset label tab ke default sebelum masuk mode
-  const resetUrlTab = document.querySelector('.input-tab[data-mode="url"]');
-  const resetUploadTab = document.querySelector('.input-tab[data-mode="upload"]');
-  if (resetUrlTab) {
-    resetUrlTab.querySelector(".tab-icon").textContent = "🔗";
-    resetUrlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
-  }
-  if (resetUploadTab) {
-    resetUploadTab.querySelector(".tab-icon").textContent = "📁";
-    resetUploadTab.querySelector(".tab-text").textContent = "UPLOAD FILE";
-  }
+// Re-query element form yang baru di-restore
+const inputLabelEl = document.getElementById("inputLabel");
+const inputEl = document.getElementById("toolInput");
+const inputTabsEl = document.getElementById("inputTabs");
+const modeUrlEl = document.getElementById("modeUrl");
+const modeUploadEl = document.getElementById("modeUpload");
+const extraEl = document.getElementById("toolExtra");
+const submitEl = document.getElementById("submitBtn");
+const submitLabelEl = document.getElementById("submitLabel");
+const secondFieldEl = document.getElementById("secondField");
 
-  if (info.supportsUpload) {
-    if (inputTabs) inputTabs.hidden = false;
-    switchInputMode("url");
-  } else if (info.supportsModeSwitch) {
-    if (inputTabs) inputTabs.hidden = false;
-    switchInputMode("url");
-  } else {
-    if (inputTabs) inputTabs.hidden = true;
-    if (modeUrl) modeUrl.hidden = false;
-    if (modeUpload) modeUpload.hidden = true;
-    inputMode = "url";
-  }
+if (inputLabelEl) inputLabelEl.textContent = info.label;
 
-  $("#secondField").hidden = key !== "react";
-  extra.value = "";
-  extra.required = key === "react";
+if (inputEl) {
+  inputEl.type = info.inputType;
+  inputEl.placeholder = info.placeholder;
+  inputEl.value = "";
+  inputEl.autocomplete = info.inputType === "url" ? "url" : "off";
+}
 
-  submit.disabled = false;
-  submitLabel.textContent = info.button;
+clearSelectedFile();
+
+// Reset label tab ke default sebelum masuk mode
+const resetUrlTab = document.querySelector('.input-tab[data-mode="url"]');
+const resetUploadTab = document.querySelector('.input-tab[data-mode="upload"]');
+if (resetUrlTab) {
+  resetUrlTab.querySelector(".tab-icon").textContent = "🔗";
+  resetUrlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
+}
+if (resetUploadTab) {
+  resetUploadTab.querySelector(".tab-icon").textContent = "📁";
+  resetUploadTab.querySelector(".tab-text").textContent = "UPLOAD FILE";
+}
+
+if (info.supportsUpload) {
+  if (inputTabsEl) inputTabsEl.hidden = false;
+  switchInputMode("url");
+} else if (info.supportsModeSwitch) {
+  if (inputTabsEl) inputTabsEl.hidden = false;
+  switchInputMode("url");
+} else {
+  if (inputTabsEl) inputTabsEl.hidden = true;
+  if (modeUrlEl) modeUrlEl.hidden = false;
+  if (modeUploadEl) modeUploadEl.hidden = true;
+  inputMode = "url";
+}
+
+if (secondFieldEl) secondFieldEl.hidden = key !== "react";
+if (extraEl) {
+  extraEl.value = "";
+  extraEl.required = key === "react";
+}
+
+if (submitEl) submitEl.disabled = false;
+if (submitLabelEl) submitLabelEl.textContent = info.button;
 
   clearResult();
   fpresetSearchState = null;
@@ -2902,7 +2922,7 @@ fpresetInDetailView = false;
 }
 
 function syncRoute() {
-  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset|random-cecan|gen-lobby-ff|gen-duo-ff|brat-vid|gen-dana)$/);
+  const match = location.hash.match(/^#tool\/(hd|remove-bg|react|pinterest|spotify|fpreset|random-cecan|gen-lobby-ff|gen-duo-ff|brat-vid|gen-dana|gen-ovo|faceswap)$/);
   if (match) openTool(match[1], false);
   else goHome(false);
 }
@@ -2983,6 +3003,12 @@ if (form) {
     const info = toolInfo[activeTool];
     if (!info) return;
 
+    // Query ulang element (karena form bisa di-restore)
+    const inputEl = document.getElementById("toolInput");
+    const extraEl = document.getElementById("toolExtra");
+    const submitEl = document.getElementById("submitBtn");
+    const submitLabelEl = document.getElementById("submitLabel");
+
     let fetchOptions;
     const isUploadMode = info.supportsUpload && inputMode === "upload";
 
@@ -2992,51 +3018,50 @@ if (form) {
       fd.append("image", selectedFile, selectedFile.name);
       fetchOptions = { method: "POST", body: fd };
     } else {
-  const value = input.value.trim();
-  if (!value) return;
+      const value = inputEl ? inputEl.value.trim() : "";
+      if (!value) return;
 
-  let payload;
-  let endpoint = info.endpoint;
+      let payload;
+      let endpoint = info.endpoint;
 
-  if (activeTool === "fpreset" && inputMode === "upload") {
-    // FPRESET mode "Cari Preset" — pakai keyword, endpoint search
-    payload = { query: value };
-    endpoint = info.searchEndpoint;
-  } else if (activeTool === "pinterest" || activeTool === "spotify") {
-    payload = { query: value };
-  } else {
-    payload = { url: value };
-  }
+      if (activeTool === "fpreset" && inputMode === "upload") {
+        payload = { query: value };
+        endpoint = info.searchEndpoint;
+      } else if (activeTool === "pinterest" || activeTool === "spotify") {
+        payload = { query: value };
+      } else {
+        payload = { url: value };
+      }
 
-  if (activeTool === "react") payload.emoji = extra.value.trim();
+      if (activeTool === "react" && extraEl) payload.emoji = extraEl.value.trim();
 
-  fetchOptions = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    __endpoint: endpoint // simpan sementara
-  };
-}
+      fetchOptions = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        __endpoint: endpoint
+      };
+    }
 
-    submit.disabled = true;
-    submitLabel.textContent = "PROCESSING...";
+    if (submitEl) submitEl.disabled = true;
+    if (submitLabelEl) submitLabelEl.textContent = "PROCESSING...";
     showMessage("Sedang menghubungi provider dengan aman. Tunggu sebentar…", "loading");
 
     try {
       const token = await ensureSession();
-if (!fetchOptions.headers) fetchOptions.headers = {};
-fetchOptions.headers["X-Session-Token"] = token;
+      if (!fetchOptions.headers) fetchOptions.headers = {};
+      fetchOptions.headers["X-Session-Token"] = token;
 
-const finalEndpoint = fetchOptions.__endpoint || info.endpoint;
-delete fetchOptions.__endpoint;
-let response = await fetch(finalEndpoint, fetchOptions);
+      const finalEndpoint = fetchOptions.__endpoint || info.endpoint;
+      delete fetchOptions.__endpoint;
+      let response = await fetch(finalEndpoint, fetchOptions);
 
       if (response.status === 401) {
         console.warn("[SESSION] 401 — refresh token & retry");
         sessionToken = null; sessionExpiresAt = 0;
         const newToken = await ensureSession();
         fetchOptions.headers["X-Session-Token"] = newToken;
-response = await fetch(finalEndpoint, fetchOptions);
+        response = await fetch(finalEndpoint, fetchOptions);
       }
 
       const contentType = response.headers.get("content-type") || "";
@@ -3055,18 +3080,18 @@ response = await fetch(finalEndpoint, fetchOptions);
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "Request gagal.");
         if (activeTool === "pinterest") renderPinterest(data);
-else if (activeTool === "spotify") renderMusic(data);
-else if (activeTool === "fpreset") {
-  if (inputMode === "upload") renderFpresetSearch(data);
-  else renderFpreset(data);
-}
-else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
+        else if (activeTool === "spotify") renderMusic(data);
+        else if (activeTool === "fpreset") {
+          if (inputMode === "upload") renderFpresetSearch(data);
+          else renderFpreset(data);
+        }
+        else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
       }
     } catch (error) {
       showMessage(error.message || "Terjadi kesalahan. Coba lagi nanti.", "error");
     } finally {
-      submit.disabled = false;
-      submitLabel.textContent = info.button;
+      if (submitEl) submitEl.disabled = false;
+      if (submitLabelEl) submitLabelEl.textContent = info.button;
     }
   });
 }
@@ -4290,17 +4315,29 @@ if (document.readyState === "loading") {
 /* =========================================================
    Cache form HTML asli buat restore
    ========================================================= */
+/* =========================================================
+   Cache form HTML asli SEBELUM apapun dijalankan
+   ========================================================= */
 (function cacheOriginalForm() {
   const formEl = document.getElementById("toolForm");
   if (formEl) {
     originalFormHTML = formEl.innerHTML;
-    console.log("[XAVRELS] Original form HTML cached");
+    console.log("[XAVRELS] Original form HTML cached, length:", originalFormHTML.length);
+  } else {
+    console.error("[XAVRELS] #toolForm gak ketemu — cache gagal!");
   }
 })();
 
-/* ===== Start ===== */
-syncRoute();
-console.log("[XAVRELS] Tools loaded:", Object.keys(toolInfo));
-console.log("[XAVRELS] Tombol data-open:", document.querySelectorAll("[data-open]").length);
-console.log("[XAVRELS] switchInputMode:", typeof switchInputMode);
-console.log("[XAVRELS] supportsUpload hd:", toolInfo.hd.supportsUpload);
+// Jalankan setelah DOM ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    autoCountAndNumberTools();
+    syncRoute();
+    console.log("[XAVRELS] Tools loaded:", Object.keys(toolInfo));
+  });
+} else {
+  autoCountAndNumberTools();
+  syncRoute();
+  console.log("[XAVRELS] Tools loaded:", Object.keys(toolInfo));
+  console.log("[XAVRELS] Tombol data-open:", document.querySelectorAll("[data-open]").length);
+}
