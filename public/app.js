@@ -2515,26 +2515,25 @@ function openTool(key, updateHistory = true) {
 
   // ═══════════════════════════════════════════════
   // SPECIAL TOOL: RANDOM CECAN — Custom UI
-  // Setup umum (title, description, dll) tetep jalan,
-  // tapi form di-replace total dengan UI custom.
   // ═══════════════════════════════════════════════
   if (key === "random-cecan") {
-    // Setup header info
     $("#workspaceIssue").textContent = info.issue;
     $("#workspaceIcon").textContent = info.icon;
     $("#workspaceCategory").textContent = info.category;
-    
+
+    // ⚠️ BUG LAMA: ini pakai `titleEl` yang belum didefinisikan!
+    // Harusnya pakai `cecanTitleEl`
     const cecanTitleEl = $("#workspaceTitle");
-    titleEl.replaceChildren();
+    cecanTitleEl.replaceChildren();
     const lead = document.createElement("span"); lead.textContent = info.titleLead;
     const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
-    titleEl.append(lead, document.createTextNode(" "), accent);
+    cecanTitleEl.append(lead, document.createTextNode(" "), accent);
 
     $("#workspaceDescription").textContent = info.description;
     $("#workspaceTip").textContent = info.tip;
     $("#panelNumber").textContent = info.number;
+    $("#workspaceDecoNumber").textContent = info.number;
 
-    // Render custom UI
     renderRandomCecanUI();
 
     clearResult();
@@ -2545,104 +2544,108 @@ function openTool(key, updateHistory = true) {
     if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
-  
+  }
+
   // ═══════════════════════════════════════════════
-// SPECIAL TOOL: BRAT VID
-// ═══════════════════════════════════════════════
-if (key === "brat-vid") {
-  $("#workspaceIssue").textContent = info.issue;
-  $("#workspaceIcon").textContent = info.icon;
-  $("#workspaceCategory").textContent = info.category;
-
-  const bratTitleEl = $("#workspaceTitle");
-  bratTitleEl.replaceChildren();
-  const lead = document.createElement("span"); lead.textContent = info.titleLead;
-  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
-  bratTitleEl.append(lead, document.createTextNode(" "), accent);
-
-  $("#workspaceDescription").textContent = info.description;
-  $("#workspaceTip").textContent = info.tip;
-  $("#panelNumber").textContent = info.number;
-
-  renderBratVidTool();
-
-  clearResult();
-  fpresetSearchState = null;
-  fpresetInDetailView = false;
-  document.title = `${info.title} — XAVRELS MULTITOOLS`;
-
-  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  return;
-}
-
-// ═══════════════════════════════════════════════
-// SPECIAL TOOL: GEN DANA
-// ═══════════════════════════════════════════════
-if (key === "gen-dana") {
-  $("#workspaceIssue").textContent = info.issue;
-  $("#workspaceIcon").textContent = info.icon;
-  $("#workspaceCategory").textContent = info.category;
-
-  const danaTitleEl = $("#workspaceTitle");
-danaTitleEl.replaceChildren();
-  const lead = document.createElement("span"); lead.textContent = info.titleLead;
-  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
-  danaTitleEl.append(lead, document.createTextNode(" "), accent);
-
-  $("#workspaceDescription").textContent = info.description;
-  $("#workspaceTip").textContent = info.tip;
-  $("#panelNumber").textContent = info.number;
-
-  renderGenDanaTool();
-
-  clearResult();
-  fpresetSearchState = null;
-  fpresetInDetailView = false;
-  document.title = `${info.title} — XAVRELS MULTITOOLS`;
-
-  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  return;
-}
-  
+  // SPECIAL TOOL: BRAT VID
   // ═══════════════════════════════════════════════
-// SPECIAL TOOL: GEN LOBBY FF & GEN DUO FF
-// ═══════════════════════════════════════════════
-if (key === "gen-lobby-ff" || key === "gen-duo-ff") {
-  // Setup header info
+  if (key === "brat-vid") {
+    $("#workspaceIssue").textContent = info.issue;
+    $("#workspaceIcon").textContent = info.icon;
+    $("#workspaceCategory").textContent = info.category;
+
+    const bratTitleEl = $("#workspaceTitle");
+    bratTitleEl.replaceChildren();
+    const lead = document.createElement("span"); lead.textContent = info.titleLead;
+    const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+    bratTitleEl.append(lead, document.createTextNode(" "), accent);
+
+    $("#workspaceDescription").textContent = info.description;
+    $("#workspaceTip").textContent = info.tip;
+    $("#panelNumber").textContent = info.number;
+    $("#workspaceDecoNumber").textContent = info.number;
+
+    renderBratVidTool();
+
+    clearResult();
+    fpresetSearchState = null;
+    fpresetInDetailView = false;
+    document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+    if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  // ═══════════════════════════════════════════════
+  // SPECIAL TOOL: GEN DANA
+  // ═══════════════════════════════════════════════
+  if (key === "gen-dana") {
+    $("#workspaceIssue").textContent = info.issue;
+    $("#workspaceIcon").textContent = info.icon;
+    $("#workspaceCategory").textContent = info.category;
+
+    const danaTitleEl = $("#workspaceTitle");
+    danaTitleEl.replaceChildren();
+    const lead = document.createElement("span"); lead.textContent = info.titleLead;
+    const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+    danaTitleEl.append(lead, document.createTextNode(" "), accent);
+
+    $("#workspaceDescription").textContent = info.description;
+    $("#workspaceTip").textContent = info.tip;
+    $("#panelNumber").textContent = info.number;
+    $("#workspaceDecoNumber").textContent = info.number;
+
+    renderGenDanaTool();
+
+    clearResult();
+    fpresetSearchState = null;
+    fpresetInDetailView = false;
+    document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+    if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  // ═══════════════════════════════════════════════
+  // SPECIAL TOOL: GEN LOBBY FF & GEN DUO FF
+  // ═══════════════════════════════════════════════
+  if (key === "gen-lobby-ff" || key === "gen-duo-ff") {
+    $("#workspaceIssue").textContent = info.issue;
+    $("#workspaceIcon").textContent = info.icon;
+    $("#workspaceCategory").textContent = info.category;
+
+    const ffTitleEl = $("#workspaceTitle");
+    ffTitleEl.replaceChildren();
+    const lead = document.createElement("span"); lead.textContent = info.titleLead;
+    const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+    ffTitleEl.append(lead, document.createTextNode(" "), accent);
+
+    $("#workspaceDescription").textContent = info.description;
+    $("#workspaceTip").textContent = info.tip;
+    $("#panelNumber").textContent = info.number;
+    $("#workspaceDecoNumber").textContent = info.number;
+
+    renderFakeFFTool(key);
+
+    clearResult();
+    fpresetSearchState = null;
+    fpresetInDetailView = false;
+    document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+    if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  // ═══════════════════════════════════════════════
+  // GENERIC TOOL (HD, Remove BG, React, Pinterest, Spotify, Fpreset)
+  // ═══════════════════════════════════════════════
   $("#workspaceIssue").textContent = info.issue;
   $("#workspaceIcon").textContent = info.icon;
   $("#workspaceCategory").textContent = info.category;
-
-  const ffTitleEl = $("#workspaceTitle");
-ffTitleEl.replaceChildren();
-  const lead = document.createElement("span"); lead.textContent = info.titleLead;
-  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
-  ffTitleEl.append(lead, document.createTextNode(" "), accent);
-
-  $("#workspaceDescription").textContent = info.description;
-  $("#workspaceTip").textContent = info.tip;
-  $("#panelNumber").textContent = info.number;
-
-  // Render custom UI
-  renderFakeFFTool(key);
-
-  clearResult();
-  fpresetSearchState = null;
-  fpresetInDetailView = false;
-  document.title = `${info.title} — XAVRELS MULTITOOLS`;
-
-  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  return;
-}
-
-
-  $("#workspaceIssue").textContent = info.issue;
-$("#workspaceIcon").textContent = info.icon;
-$("#workspaceCategory").textContent = info.category;
-$("#workspaceDecoNumber").textContent = info.number;  // ← tambah ini
+  $("#workspaceDecoNumber").textContent = info.number;
 
   const titleEl = $("#workspaceTitle");
   titleEl.replaceChildren();
@@ -2662,49 +2665,42 @@ $("#workspaceDecoNumber").textContent = info.number;  // ← tambah ini
 
   clearSelectedFile();
 
-// Reset label tab ke default sebelum masuk mode
-const resetUrlTab = document.querySelector('.input-tab[data-mode="url"]');
-const resetUploadTab = document.querySelector('.input-tab[data-mode="upload"]');
-if (resetUrlTab) {
-  resetUrlTab.querySelector(".tab-icon").textContent = "🔗";
-  resetUrlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
-}
-if (resetUploadTab) {
-  resetUploadTab.querySelector(".tab-icon").textContent = "📁";
-  resetUploadTab.querySelector(".tab-text").textContent = "UPLOAD FILE";
-}
+  // Reset label tab ke default sebelum masuk mode
+  const resetUrlTab = document.querySelector('.input-tab[data-mode="url"]');
+  const resetUploadTab = document.querySelector('.input-tab[data-mode="upload"]');
+  if (resetUrlTab) {
+    resetUrlTab.querySelector(".tab-icon").textContent = "🔗";
+    resetUrlTab.querySelector(".tab-text").textContent = "PAKAI LINK";
+  }
+  if (resetUploadTab) {
+    resetUploadTab.querySelector(".tab-icon").textContent = "📁";
+    resetUploadTab.querySelector(".tab-text").textContent = "UPLOAD FILE";
+  }
 
-if (info.supportsUpload) {
-  if (inputTabs) inputTabs.hidden = false;
-  switchInputMode("url");
-} else if (info.supportsModeSwitch) {
-  if (inputTabs) inputTabs.hidden = false;
-  switchInputMode("url"); // mode awal = url
-} else {
-  if (inputTabs) inputTabs.hidden = true;
-  if (modeUrl) modeUrl.hidden = false;
-  if (modeUpload) modeUpload.hidden = true;
-  inputMode = "url";
-}
+  if (info.supportsUpload) {
+    if (inputTabs) inputTabs.hidden = false;
+    switchInputMode("url");
+  } else if (info.supportsModeSwitch) {
+    if (inputTabs) inputTabs.hidden = false;
+    switchInputMode("url");
+  } else {
+    if (inputTabs) inputTabs.hidden = true;
+    if (modeUrl) modeUrl.hidden = false;
+    if (modeUpload) modeUpload.hidden = true;
+    inputMode = "url";
+  }
 
   $("#secondField").hidden = key !== "react";
-extra.value = "";
-extra.required = key === "react";
+  extra.value = "";
+  extra.required = key === "react";
 
-submit.disabled = false;
-submitLabel.textContent = info.button;
-
-// ── Khusus Random Cecan: UI custom ──
-if (key === "random-cecan") {
-  renderRandomCecanTool();
-  return;
-}
+  submit.disabled = false;
+  submitLabel.textContent = info.button;
 
   clearResult();
-// Reset fpreset state
-fpresetSearchState = null;
-fpresetInDetailView = false;
-document.title = `${info.title} — XAVRELS MULTITOOLS`;
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
 
   if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
   window.scrollTo({ top: 0, behavior: "smooth" });
