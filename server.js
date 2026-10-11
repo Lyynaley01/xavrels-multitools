@@ -704,71 +704,90 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
       throw new Error(apiMsg ? `API error: ${apiMsg}` : `API mengembalikan HTTP ${response.status}.`);
     }
 
-    // 🔥 FIX: Parse SSE `candidates` event dari amfinder (data video ada di sini)
-let rawList = fp_parseCandidatesSSE(response.data);
+    const data = fp_parseAmFinderResponse(response.data);
+    if (!data) throw new Error("API tidak mengembalikan data.");
+    if (data.found === false) throw new Error("Preset tidak ditemukan di video ini.");
 
-// Fallback ke parser lama kalau bukan format candidates
-if (!rawList) {
-  const data = fp_parseAmFinderResponse(response.data);
-  if (data) {
-    if (Array.isArray(data)) rawList = data;
-    else if (Array.isArray(data.videos)) rawList = data.videos;
-    else if (Array.isArray(data.results)) rawList = data.results;
-    else if (Array.isArray(data.data)) rawList = data.data;
-    else if (Array.isArray(data.items)) rawList = data.items;
-  }
-}
-if (!rawList) rawList = [];
+    const video        = data.video        || {};
+    const authorDetail = data.authorDetail || data.author || video.author || {};
+    const stats        = video.stats || video.statistics || data.stats || data.statistics || {};
 
-// Normalisasi field — amfinder pakai: handle, snippet, thumb, stats.playCount, stats.likeCount
-const videos = rawList.slice(0, 30).map((v) => {
-  // author: amfinder pakai `handle` (format "@username")
-  let uniqueId = v.handle || v.author?.uniqueId || v.author?.username || "";
-  uniqueId = String(uniqueId).replace(/^@/, "").trim();
+    const firstCount = (...values) => {
+      for (const value of values) {
+        if (value === null || value === undefined || value === "") continue;
+        const number = Number(value);
+        if (Number.isFinite(number) && number >= 0) return number;
+      }
+      return 0;
+    };
+    const firstString = (...values) => {
+      for (const value of values) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+      }
+      return "";
+    };
+    const avatarValue = authorDetail.avatar || authorDetail.avatarUrl ||
+      authorDetail.avatar_url || authorDetail.avatarLarger ||
+      authorDetail.avatarMedium || authorDetail.avatarThumb ||
+      authorDetail.avatar_large || authorDetail.avatar_medium ||
+      authorDetail.avatar_thumb || authorDetail.avatarThumbUrl || "";
+    const avatarUrl = typeof avatarValue === "string"
+      ? avatarValue
+      : (Array.isArray(avatarValue?.urlList) ? avatarValue.urlList[0] :
+        (Array.isArray(avatarValue?.url_list) ? avatarValue.url_list[0] : ""));
 
-  const videoId = String(v.id || v.videoId || v.video_id || "");
-  const url = v.url || v.videoUrl || v.video_url
-    || (videoId && uniqueId ? `https://www.tiktok.com/@${uniqueId}/video/${videoId}` : "")
-    || "";
+    const presetLinks = Array.isArray(data.presetLinks)
+      ? data.presetLinks
+          .filter((i) => i?.url && typeof i.url === "string")
+          .map((i) => ({
+            type: safeText(String(i.type || ""), 40),
+            title: safeText(String(i.title || ""), 120),
+            url: safeText(i.url, 1000),
+            thumb: typeof i.thumb === "string" && /^https?:\/\//i.test(i.thumb) ? i.thumb : "",
+            size: safeText(String(i.size || ""), 40),
+            ratio: safeText(String(i.ratio || ""), 40),
+            detail: safeText(String(i.detail || ""), 200),
+            source: safeText(String(i.source || ""), 40),
+            verified: i.verified === true,
+            byAuthor: i.byAuthor === true
+          }))
+      : [];
 
-  const firstString = (...vals) => {
-    for (const val of vals) {
-      if (typeof val === "string" && val.trim()) return val.trim();
-      if (typeof val === "number" && Number.isFinite(val)) return String(val);
-    }
-    return "";
-  };
-  const firstCount = (...vals) => {
-    for (const val of vals) {
-      if (val === null || val === undefined || val === "") continue;
-      const n = Number(val);
-      if (Number.isFinite(n) && n >= 0) return n;
-    }
-    return 0;
-  };
+    const result = {
+      author: safeText(firstString(data.author, authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id), 80),
+      username: safeText(firstString(authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id, authorDetail.uniqueID), 80),
+      nickname: safeText(firstString(authorDetail.nickname, authorDetail.displayName, authorDetail.display_name, authorDetail.name), 120),
+      bio: safeText(firstString(authorDetail.bio, authorDetail.signature, authorDetail.bioDescription, authorDetail.bio_description), 500),
+      bioLink: typeof authorDetail.bioLink === "string" && /^https?:\/\//i.test(authorDetail.bioLink)
+        ? safeText(authorDetail.bioLink, 500)
+        : "",
+      avatar: typeof avatarUrl === "string" && /^https?:\/\//i.test(avatarUrl)
+        ? avatarUrl
+        : "",
 
-  // amfinder pakai: thumb, snippet, stats.playCount, stats.likeCount
-  const cover = firstString(v.thumb, v.cover, v.thumbnail, v.dynamicCover, v.dynamic_cover);
-  const description = firstString(v.snippet, v.description, v.desc, v.caption, v.title);
+      videoId: safeText(String(video.id || ""), 40),
+      sourceUrl: safeText(String(video.url || inputUrl), 500),
+      caption: safeText(String(video.description || ""), 500),
+      cover: typeof video.cover === "string" && /^https?:\/\//i.test(video.cover)
+        ? video.cover
+        : "",
+      videoUrl: typeof video.playUrlNoWm === "string" && /^https?:\/\//i.test(video.playUrlNoWm)
+        ? video.playUrlNoWm
+        : (typeof video.playUrl === "string" && /^https?:\/\//i.test(video.playUrl) ? video.playUrl : ""),
 
-  return {
-    videoId,
-    url,
-    cover: /^https?:\/\//i.test(cover) ? cover : "",
-    description: safeText(description, 200),
-    author: {
-      uniqueId: safeText(uniqueId, 80),
-      nickname: safeText(firstString(v.nickname, v.author?.nickname, v.author?.displayName, uniqueId), 120)
-    },
-    stats: {
-      views: firstCount(v.stats?.playCount, v.stats?.views, v.stats?.viewCount, v.stats?.play_count),
-      likes: firstCount(v.stats?.likeCount, v.stats?.likes, v.stats?.diggCount, v.stats?.digg_count)
-    }
-  };
-}).filter((v) => v.url && /tiktok\.com/i.test(v.url));
+      stats: {
+        views: firstCount(stats.views, stats.playCount, stats.viewCount, stats.play_count, stats.view_count, video.playCount, video.play_count, video.viewCount, video.view_count),
+        likes: firstCount(stats.likes, stats.diggCount, stats.likeCount, stats.like_count, stats.digg_count, video.diggCount, video.digg_count, video.likeCount, video.like_count),
+        comments: firstCount(stats.comments, stats.commentCount, stats.comment_count, video.commentCount, video.comment_count),
+        shares: firstCount(stats.shares, stats.shareCount, stats.share_count, video.shareCount, video.share_count)
+      },
 
-res.set("Cache-Control", "no-store");
-res.json({ ok: true, videos });
+      presetLinks
+    };
+
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, result });
 
   } catch (err) {
     console.error("❌ [/api/fpreset]", err.message);
@@ -801,23 +820,31 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
       throw new Error(apiMsg ? `API error: ${apiMsg}` : `API mengembalikan HTTP ${response.status}.`);
     }
 
-    const data = fp_parseAmFinderResponse(response.data);
-    if (!data) throw new Error("API tidak mengembalikan data.");
+    // 🔥 FIX: Parse SSE `candidates` event dari amfinder (data video ada di sini)
+    let rawList = fp_parseCandidatesSSE(response.data);
 
-    // Response bisa berupa array langsung atau object dengan field tertentu
-    let rawList = [];
-    if (Array.isArray(data)) rawList = data;
-    else if (Array.isArray(data.videos)) rawList = data.videos;
-    else if (Array.isArray(data.results)) rawList = data.results;
-    else if (Array.isArray(data.data)) rawList = data.data;
-    else if (Array.isArray(data.items)) rawList = data.items;
+    // Fallback ke parser lama kalau bukan format candidates
+    if (!rawList) {
+      const data = fp_parseAmFinderResponse(response.data);
+      if (data) {
+        if (Array.isArray(data)) rawList = data;
+        else if (Array.isArray(data.videos)) rawList = data.videos;
+        else if (Array.isArray(data.results)) rawList = data.results;
+        else if (Array.isArray(data.data)) rawList = data.data;
+        else if (Array.isArray(data.items)) rawList = data.items;
+      }
+    }
+    if (!rawList) rawList = [];
 
+    // Normalisasi field — amfinder pakai: handle, snippet, thumb, stats.playCount, stats.likeCount
     const videos = rawList.slice(0, 30).map((v) => {
-      const author = v.author || v.authorDetail || v.user || {};
-      const stats = v.stats || v.statistics || {};
+      // author: amfinder pakai `handle` (format "@username")
+      let uniqueId = v.handle || v.author?.uniqueId || v.author?.username || "";
+      uniqueId = String(uniqueId).replace(/^@/, "").trim();
+
       const videoId = String(v.id || v.videoId || v.video_id || "");
       const url = v.url || v.videoUrl || v.video_url
-        || (videoId && author.uniqueId ? `https://www.tiktok.com/@${author.uniqueId}/video/${videoId}` : "")
+        || (videoId && uniqueId ? `https://www.tiktok.com/@${uniqueId}/video/${videoId}` : "")
         || "";
 
       const firstString = (...vals) => {
@@ -836,8 +863,9 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
         return 0;
       };
 
-      const cover = firstString(v.cover, v.thumbnail, v.thumb, v.dynamicCover, v.dynamic_cover);
-      const description = firstString(v.description, v.desc, v.caption, v.title);
+      // amfinder pakai: thumb, snippet, stats.playCount, stats.likeCount
+      const cover = firstString(v.thumb, v.cover, v.thumbnail, v.dynamicCover, v.dynamic_cover);
+      const description = firstString(v.snippet, v.description, v.desc, v.caption, v.title);
 
       return {
         videoId,
@@ -845,12 +873,12 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
         cover: /^https?:\/\//i.test(cover) ? cover : "",
         description: safeText(description, 200),
         author: {
-          uniqueId: safeText(firstString(author.uniqueId, author.username, author.unique_id), 80),
-          nickname: safeText(firstString(author.nickname, author.displayName, author.name), 120)
+          uniqueId: safeText(uniqueId, 80),
+          nickname: safeText(firstString(v.nickname, v.author?.nickname, v.author?.displayName, uniqueId), 120)
         },
         stats: {
-          views: firstCount(stats.views, stats.playCount, stats.viewCount, stats.play_count),
-          likes: firstCount(stats.likes, stats.diggCount, stats.likeCount, stats.digg_count)
+          views: firstCount(v.stats?.playCount, v.stats?.views, v.stats?.viewCount, v.stats?.play_count),
+          likes: firstCount(v.stats?.likeCount, v.stats?.likes, v.stats?.diggCount, v.stats?.digg_count)
         }
       };
     }).filter((v) => v.url && /tiktok\.com/i.test(v.url));
