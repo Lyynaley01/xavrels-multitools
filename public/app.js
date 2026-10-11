@@ -617,27 +617,54 @@ function renderMusic(data) {
 
   /* ===== HTML5 Audio Player ===== */
   if (item.audio) {
-    const playerWrap = document.createElement("div");
-    playerWrap.className = "music-player";
+  const playerWrap = document.createElement("div");
+  playerWrap.className = "music-player";
+  card.append(playerWrap);
 
-    const audio = document.createElement("audio");
-audio.controls = true;
-audio.preload = "metadata";
-audio.controlsList = "nodownload";
+  const audio = document.createElement("audio");
+  audio.controls = true;
+  audio.preload = "metadata";
+  audio.controlsList = "nodownload";
 
-// Pakai proxy server supaya Content-Type benar (audio/mpeg)
-const streamUrl = `/api/stream?url=${encodeURIComponent(item.audio)}&token=${encodeURIComponent(sessionToken || "")}`;
-audio.src = streamUrl;
+  // Placeholder loading dulu
+  const loadingText = document.createElement("div");
+  loadingText.className = "music-player-loading";
+  loadingText.textContent = "⏳ Menyiapkan audio...";
+  playerWrap.append(loadingText);
 
-// Tambah header session token via event listener
-// (audio tag gak bisa kirim custom header, jadi kita pakai query trick)
-audio.addEventListener("error", () => {
-  playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio tidak dapat diputar. Coba refresh halaman.</div>`;
-});
+  // Async: pastikan sessionToken siap dulu, baru set src
+  (async () => {
+    try {
+      const token = await ensureSession();
+      const streamUrl = `/api/stream?url=${encodeURIComponent(item.audio)}&token=${encodeURIComponent(token)}`;
+      console.log("[MUSIC] Setting audio src:", streamUrl.slice(0, 100) + "...");
+      audio.src = streamUrl;
 
-    playerWrap.append(audio);
-    card.append(playerWrap);
-  }
+      audio.addEventListener("loadedmetadata", () => {
+        console.log("[MUSIC] Audio metadata loaded ✅");
+        loadingText.remove();
+        playerWrap.append(audio);
+      });
+
+      audio.addEventListener("error", (e) => {
+        console.error("[MUSIC] Audio error:", e, audio.error);
+        playerWrap.innerHTML = `<div class="music-player-error">🎵 Audio tidak dapat diputar. Coba refresh halaman.</div>`;
+      });
+
+      // Fallback timeout — kalau 15 detik gak load, tampilkan audio langsung
+      setTimeout(() => {
+        if (loadingText.parentNode) {
+          loadingText.remove();
+          playerWrap.append(audio);
+        }
+      }, 15000);
+
+    } catch (err) {
+      console.error("[MUSIC] Gagal ambil session token:", err);
+      playerWrap.innerHTML = `<div class="music-player-error">🎵 Gagal menyiapkan audio: ${err.message}</div>`;
+    }
+  })();
+}
 
   /* ===== Actions ===== */
   const actions = document.createElement("div");
