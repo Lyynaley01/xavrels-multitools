@@ -2267,3 +2267,109 @@ footer>span:nth-child(2){order:3;width:100%}
   }
   .fpreset-load-counter { font-size: 9px; }
 }
+/* =========================================================
+   FPRESET DETAIL VIEW — Halaman detail preset
+   ========================================================= */
+.fpreset-detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fpresetDetailEnter 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes fpresetDetailEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Tombol Back ===== */
+.fpreset-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 11px 16px;
+  background: #fff;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fpreset-back-btn:hover {
+  background: var(--ink);
+  color: #fff;
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.fpreset-back-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.fpreset-back-btn span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ===== Detail content wrapper ===== */
+.fpreset-detail-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== Loading state ===== */
+.fpreset-detail-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 20px;
+  background: #f7f8fb;
+  border: 1.5px dashed #cfd2d9;
+  border-radius: 12px;
+  text-align: center;
+}
+.fpreset-detail-loading strong {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: var(--ink);
+}
+.fpreset-detail-loading span {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.fpreset-detail-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e6e9ef;
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: fpresetSpinner 0.9s linear infinite;
+  margin-bottom: 6px;
+}
+@keyframes fpresetSpinner {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 620px) {
+  .fpreset-back-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 9px;
+    padding: 12px 14px;
+  }
+  .fpreset-detail-loading {
+    padding: 36px 16px;
+  }
+  .fpreset-detail-loading strong { font-size: 12px; }
+  .fpreset-detail-loading span { font-size: 10px; }
+}

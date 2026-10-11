@@ -93,6 +93,10 @@ let activeBeforeUrl = null;
 let selectedFile = null;
 let inputMode = "url";
 
+// State buat fpreset search → detail view
+let fpresetSearchState = null; // { keyword, videos, shownCount, scrollPos }
+let fpresetInDetailView = false;
+
 
 /* ===== Tool config ===== */
 const toolInfo = {
@@ -1031,13 +1035,15 @@ if (item.audio) {
 /* =========================================================
    RENDER FPRESET — Alight Motion Preset Finder
    ========================================================= */
-function renderFpreset(data) {
+function renderFpreset(data, targetContainer) {
   const item = data.result || {};
   const stats = item.stats || {};
   const presetLinks = Array.isArray(item.presetLinks) ? item.presetLinks : [];
 
+  const target = targetContainer || resultArea;
   resultShell.hidden = false;
-  resultArea.replaceChildren();
+  if (!targetContainer) target.replaceChildren();
+  // Kalau targetContainer dikasih, JANGAN replace (biar tombol back tetap ada)
 
   const card = document.createElement("article");
   card.className = "fpreset-result-card";
@@ -1287,7 +1293,7 @@ function renderFpreset(data) {
 
   if (actions.children.length) card.append(actions);
 
-  resultArea.append(card);
+    target.append(card);
 
   const note = $("#resultHeadingNote");
   if (note) note.textContent = `${presetLinks.length} preset ditemukan`;
@@ -1300,6 +1306,15 @@ function renderFpresetSearch(data) {
   const videos = Array.isArray(data.videos) ? data.videos : [];
   resultShell.hidden = false;
   resultArea.replaceChildren();
+
+  // Simpan state search biar bisa di-restore pas balik dari detail view
+  fpresetSearchState = {
+    keyword: input.value.trim() || "",
+    videos,
+    shownCount: 0,
+    scrollPos: window.scrollY
+  };
+  fpresetInDetailView = false;
 
   const summary = document.createElement("div");
   summary.className = "result-summary";
@@ -1409,6 +1424,7 @@ function renderFpresetSearch(data) {
       grid.append(buildCard(videos[i], i));
     }
     shownCount = end;
+if (fpresetSearchState) fpresetSearchState.shownCount = shownCount;
 
     // Update counter
     counterEl.textContent = `Menampilkan ${shownCount} dari ${videos.length} video`;
@@ -1455,6 +1471,11 @@ function renderFpresetSearch(data) {
 async function findPresetFromVideo(videoUrl, cardEl) {
   if (!videoUrl) return;
 
+  // Simpan scroll position sebelum pindah
+  if (fpresetSearchState) {
+    fpresetSearchState.scrollPos = window.scrollY;
+  }
+
   // Loading state di card
   if (cardEl) {
     cardEl.disabled = true;
@@ -1463,10 +1484,38 @@ async function findPresetFromVideo(videoUrl, cardEl) {
     if (cta) cta.innerHTML = `⏳ <span>MENCARI…</span>`;
   }
 
-  // Scroll ke atas result panel biar user lihat progress
+  // Switch ke detail view — clear result area, tampilkan loading
+  fpresetInDetailView = true;
   resultShell.hidden = false;
+  resultArea.replaceChildren();
+
+  // Render tombol back + loading state di detail view
+  const detailWrap = document.createElement("div");
+  detailWrap.className = "fpreset-detail-view";
+  detailWrap.id = "fpresetDetailView";
+
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "fpreset-back-btn";
+  backBtn.innerHTML = `<span>←</span> KEMBALI KE HASIL PENCARIAN`;
+  backBtn.addEventListener("click", () => backToFpresetSearch());
+  detailWrap.append(backBtn);
+
+  const loadingBox = document.createElement("div");
+  loadingBox.className = "fpreset-detail-loading";
+  loadingBox.innerHTML = `
+    <div class="fpreset-detail-loading-spinner"></div>
+    <strong>Mencari preset dari video…</strong>
+    <span>Tunggu sebentar, sedang scan caption & komentar.</span>
+  `;
+  detailWrap.append(loadingBox);
+  resultArea.append(detailWrap);
+
   const note = $("#resultHeadingNote");
-  if (note) note.textContent = "Mencari preset dari video…";
+  if (note) note.textContent = "Mencari preset…";
+
+  // Scroll ke atas
+  window.scrollTo({ top: 0, behavior: "smooth" });
 
   try {
     const token = await ensureSession();
@@ -1507,9 +1556,21 @@ async function findPresetFromVideo(videoUrl, cardEl) {
     const data = await response.json();
     if (!data.ok) throw new Error(data.error || "Gagal mencari preset.");
 
-    renderFpreset(data);
+    // Hapus loading, render detail preset (pakai renderFpreset yang udah ada)
+    // Tapi kita render ke dalam detailWrap, biar tombol back tetap ada di atas
+    const presetContainer = document.createElement("div");
+    presetContainer.className = "fpreset-detail-content";
 
-    // Balikin state card
+    // Render preset ke container sementara
+    const originalResultArea = resultArea;
+    // Trick: render ke container preset
+    renderFpresetInto(presetContainer, data);
+
+    // Clear detailWrap & append fresh
+    detailWrap.replaceChildren();
+    detailWrap.append(backBtn, presetContainer);
+
+    // Balikin state card (di grid belakang)
     if (cardEl) {
       cardEl.disabled = false;
       cardEl.classList.remove("is-loading");
@@ -1517,17 +1578,75 @@ async function findPresetFromVideo(videoUrl, cardEl) {
       if (cta) cta.innerHTML = `🔍 <span>CARI PRESET</span>`;
     }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (note) note.textContent = "Preset ditemukan";
 
   } catch (err) {
-    showMessage(err.message || "Gagal mencari preset dari video ini.", "error");
+    // Kalau error, tampilkan error + tombol back
+    detailWrap.replaceChildren();
+    detailWrap.append(backBtn);
+
+    const errBox = document.createElement("div");
+    errBox.className = "result-msg error";
+    errBox.textContent = err.message || "Gagal mencari preset dari video ini.";
+    detailWrap.append(errBox);
+
     if (cardEl) {
       cardEl.disabled = false;
       cardEl.classList.remove("is-loading");
       const cta = cardEl.querySelector(".fpreset-search-cta");
       if (cta) cta.innerHTML = `🔍 <span>CARI PRESET</span>`;
     }
+
+    if (note) note.textContent = "Perlu diperiksa";
   }
+}
+
+
+/* =========================================================
+   FPRESET — Back to search results
+   ========================================================= */
+function backToFpresetSearch() {
+  if (!fpresetSearchState) {
+    // Gak ada state, fallback ke clear result
+    clearResult();
+    return;
+  }
+
+  fpresetInDetailView = false;
+
+  // Restore grid search pakai state yang tersimpan
+  const data = { videos: fpresetSearchState.videos };
+  const preservedShown = fpresetSearchState.shownCount;
+  const preservedScroll = fpresetSearchState.scrollPos;
+
+  // Re-render search grid
+  renderFpresetSearch(data);
+
+  // Restore shownCount (load sampe jumlah yang tadi udah keload)
+  // renderFpresetSearch udah load 6 pertama, kita perlu nambah sampe preservedShown
+  // Akses internal via re-trigger tombol load more
+  const loadBtn = resultArea.querySelector(".fpreset-load-more-btn");
+  if (loadBtn && preservedShown > 6) {
+    let target = Math.min(preservedShown, data.videos.length);
+    // Klik tombol load more sampe shownCount nyampe target
+    // Simulasi: hitung berapa batch lagi yang perlu di-load
+    // Karena renderFpresetSearch nge-load 6 pertama, kita perlu (target - 6) / 6 batch
+    const remaining = target - 6;
+    const batches = Math.ceil(remaining / 6);
+    for (let i = 0; i < batches; i++) {
+      if (!loadBtn || loadBtn.hidden) break;
+      loadBtn.click();
+    }
+  }
+
+  // Restore scroll
+  setTimeout(() => {
+    window.scrollTo({ top: preservedScroll, behavior: "smooth" });
+  }, 100);
+
+  // Update note
+  const note = $("#resultHeadingNote");
+  if (note) note.textContent = `${data.videos.length} video`;
 }
 
 
@@ -1778,7 +1897,10 @@ if (info.supportsUpload) {
   submitLabel.textContent = info.button;
 
   clearResult();
-  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+// Reset fpreset state
+fpresetSearchState = null;
+fpresetInDetailView = false;
+document.title = `${info.title} — XAVRELS MULTITOOLS`;
 
   if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1791,8 +1913,11 @@ function goHome(updateHistory = true) {
   homeView.hidden = false;
   document.body.classList.remove("tool-page-active");
   document.title = "XAVRELS // MULTITOOLS";
-  clearResult();
-  clearSelectedFile();
+clearResult();
+clearSelectedFile();
+// Reset fpreset state
+fpresetSearchState = null;
+fpresetInDetailView = false;
   if (updateHistory && location.hash) history.pushState(null, "", `${location.pathname}${location.search}`);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
