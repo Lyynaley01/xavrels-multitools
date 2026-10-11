@@ -1835,10 +1835,10 @@ if (form) {
 
     try {
       const token = await ensureSession();
-      if (!s) fetchOptions.headers = {};
-      fetchOptions.headers["X-Session-Token"] = token;
+if (!fetchOptions.headers) fetchOptions.headers = {};
+fetchOptions.headers["X-Session-Token"] = token;
 
-      const finalEndpoint = fetchOptions.__endpoint || info.endpoint;
+const finalEndpoint = fetchOptions.__endpoint || info.endpoint;
 delete fetchOptions.__endpoint;
 let response = await fetch(finalEndpoint, fetchOptions);
 
