@@ -4,11 +4,13 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const multer = require("multer");
 const FormData = require("form-data");
+const crypto = require("crypto");
 const path = require("path");
 
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -27,8 +29,14 @@ app.use(helmet({
 }));
 
 app.use(express.json({ limit: "32kb" }));
-app.use("/api/", rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }));
+app.use("/api/", rateLimit({
+  windowMs: 60_000,
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false
+}));
 app.use(express.static(path.join(__dirname, "public"), { etag: true, maxAge: "1h" }));
+
 
 /* ============================================================
    HTTP CLIENT
@@ -40,8 +48,9 @@ const http = axios.create({
   maxBodyLength: 12 * 1024 * 1024
 });
 
+
 /* ============================================================
-   MULTER — untuk upload file
+   MULTER
    ============================================================ */
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -52,6 +61,124 @@ const upload = multer({
     else cb(new Error("Format file tidak didukung. Gunakan PNG, JPG, WEBP, atau GIF."));
   }
 });
+
+
+/* ============================================================
+   SESSION TOKEN SYSTEM
+   ============================================================ */
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || "";
+if (!INTERNAL_API_SECRET) {
+  console.warn("⚠️  INTERNAL_API_SECRET belum di-set. Session tetap jalan tapi kurang aman.");
+}
+
+const sessionStore = new Map();
+const SESSION_TTL_MS = 10 * 60 * 1000; // 10 menit
+const SESSION_MAX_USES = 30;
+
+function pruneSessions() {
+  const now = Date.now();
+  for (const [token, data] of sessionStore.entries()) {
+    if (data.expiresAt < now || data.used > SESSION_MAX_USES) {
+      sessionStore.delete(token);
+    }
+  }
+}
+setInterval(pruneSessions, 5 * 60 * 1000);
+
+function createSession(req) {
+  const token = crypto.randomBytes(32).toString("hex");
+  sessionStore.set(token, {
+    createdAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+    ip: req.ip || "unknown",
+    ua: (req.headers["user-agent"] || "").slice(0, 200),
+    used: 0
+  });
+  return token;
+}
+
+function validateSession(req) {
+  const token = req.headers["x-session-token"];
+  if (!token) return { ok: false, reason: "Token tidak ada" };
+
+  const session = sessionStore.get(token);
+  if (!session) return { ok: false, reason: "Token tidak valid" };
+  if (session.expiresAt < Date.now()) {
+    sessionStore.delete(token);
+    return { ok: false, reason: "Token expired" };
+  }
+
+  session.used = (session.used || 0) + 1;
+  if (session.used > SESSION_MAX_USES) {
+    sessionStore.delete(token);
+    return { ok: false, reason: "Token overused" };
+  }
+
+  return { ok: true, session };
+}
+
+/**
+ * Middleware — dipakai di endpoint yang butuh proteksi.
+ */
+function requireSession(req, res, next) {
+  const result = validateSession(req);
+  if (!result.ok) {
+    return res.status(401).json({ ok: false, error: `Session invalid: ${result.reason}` });
+  }
+  req.session = result.session;
+  next();
+}
+
+
+/* ============================================================
+   /api/session — Bikin session token baru
+   ============================================================ */
+app.post("/api/session", (req, res) => {
+  try {
+    const origin = req.headers.origin || "";
+    const referer = req.headers.referer || "";
+    const host = req.headers.host || "";
+
+    const allowedOrigins = [
+      `https://${host}`,
+      `http://${host}`,
+      "http://localhost:3000",
+      "http://127.0.0.1:3000"
+    ];
+
+    const isFromAllowedOrigin =
+      !origin ||
+      allowedOrigins.some(o => origin === o || referer.startsWith(o));
+
+    if (!isFromAllowedOrigin) {
+      console.log(`🚫 [/api/session] Origin ditolak: ${origin}`);
+      return res.status(403).json({ ok: false, error: "Origin tidak diizinkan." });
+    }
+
+    // Rate limit per IP — maks 10 session baru per menit
+    const ip = req.ip || "unknown";
+    const now = Date.now();
+    const recentCount = Array.from(sessionStore.values())
+      .filter(s => s.ip === ip && (now - s.createdAt) < 60_000).length;
+
+    if (recentCount >= 10) {
+      return res.status(429).json({ ok: false, error: "Terlalu banyak session. Coba lagi nanti." });
+    }
+
+    const token = createSession(req);
+    res.set("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      token,
+      expiresIn: SESSION_TTL_MS / 1000
+    });
+
+  } catch (err) {
+    console.error("❌ [/api/session]", err.message);
+    res.status(500).json({ ok: false, error: "Gagal membuat session." });
+  }
+});
+
 
 /* ============================================================
    HELPERS
@@ -125,8 +252,9 @@ async function uploadImageToCdn(buffer, filename = "image.jpg") {
   return cdnUrl;
 }
 
+
 /* ============================================================
-   HEALTH & CONFIG
+   HEALTH
    ============================================================ */
 app.get("/api/health", (_req, res) =>
   res.json({ ok: true, name: "Xavrels MultiTools", status: "online" })
@@ -142,10 +270,11 @@ app.get("/api/config", (_req, res) => {
   res.set("Cache-Control", "no-store").json({ telegramBotUrl });
 });
 
+
 /* ============================================================
-   /api/hd
+   /api/hd — PROTECTED
    ============================================================ */
-app.post("/api/hd", upload.single("image"), async (req, res) => {
+app.post("/api/hd", requireSession, upload.single("image"), async (req, res) => {
   try {
     let imageUrl;
 
@@ -173,16 +302,18 @@ app.post("/api/hd", upload.single("image"), async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.set("Content-Disposition", 'inline; filename="xavrels-hd.jpg"');
     res.send(buf);
+
   } catch (err) {
     console.error("❌ [/api/hd]", err.message);
     sendError(res, err);
   }
 });
 
+
 /* ============================================================
-   /api/remove-bg — TANPA SHARP
+   /api/remove-bg — PROTECTED
    ============================================================ */
-app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
+app.post("/api/remove-bg", requireSession, upload.single("image"), async (req, res) => {
   try {
     let input;
 
@@ -206,7 +337,6 @@ app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
       throw new Error("Gambar maksimal 10 MB.");
     }
 
-    // Upload langsung ke CDN tanpa normalize (DreamAI handle format)
     const cdnUrl = await uploadImageToCdn(input, "upload.jpg");
     console.log(`📤 [RMBG] CDN URL: ${cdnUrl}`);
 
@@ -216,7 +346,7 @@ app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
       {
         headers: {
           "Content-Type": "application/json",
-          "X-Device-Id": require("crypto").randomUUID()
+          "X-Device-Id": crypto.randomUUID()
         },
         timeout: 120_000
       }
@@ -237,16 +367,18 @@ app.post("/api/remove-bg", upload.single("image"), async (req, res) => {
     res.set("Content-Disposition", 'inline; filename="xavrels-remove-bg.png"');
     res.set("Cache-Control", "no-store");
     res.send(output);
+
   } catch (err) {
     console.error("❌ [/api/remove-bg]", err.message);
     sendError(res, err);
   }
 });
 
+
 /* ============================================================
-   /api/pinterest
+   /api/pinterest — PROTECTED
    ============================================================ */
-app.post("/api/pinterest", async (req, res) => {
+app.post("/api/pinterest", requireSession, async (req, res) => {
   try {
     const q = safeText(req.body?.query, 100);
     if (q.length < 2) throw new Error("Masukkan keyword minimal 2 karakter.");
@@ -274,16 +406,18 @@ app.post("/api/pinterest", async (req, res) => {
       }));
 
     res.json({ ok: true, results });
+
   } catch (err) {
     console.error("❌ [/api/pinterest]", err.message);
     sendError(res, err);
   }
 });
 
+
 /* ============================================================
-   /api/spotify
+   /api/spotify — PROTECTED
    ============================================================ */
-app.post("/api/spotify", async (req, res) => {
+app.post("/api/spotify", requireSession, async (req, res) => {
   try {
     const q = safeText(req.body?.query, 120);
     if (q.length < 2) throw new Error("Masukkan judul lagu atau artis.");
@@ -308,16 +442,18 @@ app.post("/api/spotify", async (req, res) => {
         source: safeText(r.source, 80)
       }
     });
+
   } catch (err) {
     console.error("❌ [/api/spotify]", err.message);
     sendError(res, err);
   }
 });
 
+
 /* ============================================================
-   /api/react
+   /api/react — PROTECTED
    ============================================================ */
-app.post("/api/react", async (req, res) => {
+app.post("/api/react", requireSession, async (req, res) => {
   try {
     const url = validatePublicHttpsUrl(safeText(req.body?.url, 1000));
     const emoji = safeText(req.body?.emoji, 80);
@@ -353,14 +489,16 @@ app.post("/api/react", async (req, res) => {
       message: "Permintaan reaksi dikirim ke provider.",
       result: d?.message ? safeText(d.message, 160) : "Selesai"
     });
+
   } catch (err) {
     console.error("❌ [/api/react]", err.message);
     sendError(res, err);
   }
 });
 
+
 /* ============================================================
-   FALLBACK — SPA routing
+   FALLBACK — SPA
    ============================================================ */
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) {
@@ -368,6 +506,7 @@ app.get("*", (req, res) => {
   }
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
 
 /* ============================================================
    ERROR HANDLER
@@ -385,6 +524,7 @@ app.use((err, req, res, next) => {
   }
   next();
 });
+
 
 /* ============================================================
    EXPORT & LISTEN
