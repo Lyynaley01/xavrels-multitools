@@ -2084,19 +2084,37 @@ window.addEventListener("popstate", syncRoute);
 
 
 /* ===== Search ===== */
+/* ===== Search ===== */
 const searchInput = $("#searchInput");
 if (searchInput) {
-  searchInput.addEventListener("input", event => {
-    const query = event.target.value.trim().toLowerCase();
+  const filterTools = (query) => {
+    const q = query.trim().toLowerCase();
     let visible = 0;
     document.querySelectorAll(".tool-card").forEach(card => {
-      const show = card.innerText.toLowerCase().includes(query);
+      const show = card.innerText.toLowerCase().includes(q);
       card.hidden = !show;
       if (show) visible++;
     });
     const empty = $("#emptyState");
     if (empty) empty.hidden = visible > 0;
+  };
+
+  searchInput.addEventListener("input", event => {
+    filterTools(event.target.value);
   });
+
+  // Tombol reset pencarian di empty state
+  const resetBtn = $("#emptyStateReset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      filterTools("");
+      searchInput.focus();
+      // Scroll ke section tool grid
+      const toolsSection = document.getElementById("tools");
+      if (toolsSection) toolsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 }
 
 

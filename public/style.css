@@ -2617,3 +2617,181 @@ footer>span:nth-child(2){order:3;width:100%}
     font-size: 12px;
   }
 }
+/* =========================================================
+   EMPTY STATE — Tool tidak ditemukan
+   ========================================================= */
+.empty-state {
+  width: 100%;
+  max-width: 1144px;
+  margin: 0 auto 45px;
+  padding: 36px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  background:
+    linear-gradient(135deg, #fff9ed 0%, #fffdf7 60%, #f0f7ff 100%);
+  border: 2px dashed var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  animation: emptyStateEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes emptyStateEnter {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Decorative web pattern di background */
+.empty-state::before {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background-image:
+    repeating-conic-gradient(from 0deg at 50% 50%,
+      transparent 0deg 14deg,
+      rgba(23, 27, 43, 0.06) 14.3deg 14.8deg,
+      transparent 15deg 30deg);
+  border-radius: 50%;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Accent corner kanan bawah */
+.empty-state::after {
+  content: "";
+  position: absolute;
+  bottom: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: var(--yellow);
+  opacity: 0.35;
+  border-radius: 50%;
+  filter: blur(2px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== Ikon ===== */
+.empty-state-icon {
+  position: relative;
+  z-index: 1;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  background: var(--cream);
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  font-size: 36px;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: rotate(-6deg);
+  animation: emptyStateFloat 3s ease-in-out infinite;
+}
+
+@keyframes emptyStateFloat {
+  0%, 100% { transform: rotate(-6deg) translateY(0); }
+  50%      { transform: rotate(-3deg) translateY(-6px); }
+}
+
+/* ===== Content ===== */
+.empty-state-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.empty-state-content strong {
+  font-family: "Bangers", cursive;
+  font-size: 26px;
+  letter-spacing: 1.5px;
+  color: var(--ink);
+  line-height: 1.1;
+  text-shadow: 2px 2px 0 rgba(230, 57, 70, 0.15);
+}
+
+.empty-state-content p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ===== Tombol reset ===== */
+.empty-state-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  margin-top: 4px;
+  background: var(--red);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.empty-state-btn:hover {
+  background: #cb2634;
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.empty-state-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.empty-state-btn span {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ===== Responsive 620 ===== */
+@media (max-width: 620px) {
+  .empty-state {
+    margin: 0 22px 40px;
+    padding: 28px 20px;
+    gap: 14px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .empty-state::after {
+    width: 90px;
+    height: 90px;
+    bottom: -22px;
+    right: -22px;
+  }
+  .empty-state-icon {
+    width: 62px;
+    height: 62px;
+    font-size: 30px;
+  }
+  .empty-state-content strong {
+    font-size: 22px;
+    letter-spacing: 1.2px;
+  }
+  .empty-state-content p {
+    font-size: 11px;
+  }
+  .empty-state-btn {
+    width: 100%;
+    padding: 13px 16px;
+    font-size: 10px;
+  }
+}
