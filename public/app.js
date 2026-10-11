@@ -319,7 +319,7 @@ function renderImageResult(response) {
       else if (input.value.trim()) activeBeforeUrl = input.value.trim();
     }
 
-    const canShowBeforeAfter = activeTool === "hd" && !!activeBeforeUrl;
+    const canShowBeforeAfter = (activeTool === "hd" || activeTool === "remove-bg") && !!activeBeforeUrl;
 
     const card = document.createElement("article");
     card.className = "image-result-card";
