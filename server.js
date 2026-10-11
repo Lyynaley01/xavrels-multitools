@@ -20,6 +20,7 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       connectSrc: ["'self'"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       upgradeInsecureRequests: []
@@ -119,9 +120,6 @@ function validateSession(req) {
   return { ok: true, session };
 }
 
-/**
- * Cek master API key — timing-safe compare
- */
 function validateMasterKey(req) {
   if (!MASTER_API_KEY) return false;
   const provided = req.headers["x-api-key"];
@@ -134,26 +132,17 @@ function validateMasterKey(req) {
   }
 }
 
-/**
- * Middleware utama — requireAuth
- *
- * Lolos kalau salah satu:
- * 1. Punya MASTER_API_KEY valid di header X-API-Key (kamu pribadi)
- * 2. Punya session token valid di header X-Session-Token (user web)
- */
 function requireAuth(req, res, next) {
   if (validateMasterKey(req)) {
     req.authMode = "master";
     return next();
   }
-
   const sessionResult = validateSession(req);
   if (sessionResult.ok) {
     req.authMode = "session";
     req.session = sessionResult.session;
     return next();
   }
-
   return res.status(401).json({
     ok: false,
     error: "Akses ditolak. Butuh API key atau session token yang valid."
@@ -162,7 +151,7 @@ function requireAuth(req, res, next) {
 
 
 /* ============================================================
-   /api/session — Bikin session token (dari web)
+   /api/session
    ============================================================ */
 app.post("/api/session", (req, res) => {
   try {
@@ -284,7 +273,7 @@ async function uploadImageToCdn(buffer, filename = "image.jpg") {
 
 
 /* ============================================================
-   HEALTH
+   HEALTH & CONFIG
    ============================================================ */
 app.get("/api/health", (_req, res) =>
   res.json({ ok: true, name: "Xavrels MultiTools", status: "online" })
@@ -302,7 +291,7 @@ app.get("/api/config", (_req, res) => {
 
 
 /* ============================================================
-   /api/hd — PROTECTED
+   /api/hd
    ============================================================ */
 app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
   try {
@@ -348,7 +337,7 @@ app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
 
 
 /* ============================================================
-   /api/remove-bg — PROTECTED
+   /api/remove-bg
    ============================================================ */
 app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res) => {
   try {
@@ -416,7 +405,7 @@ app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res)
 
 
 /* ============================================================
-   /api/pinterest — PROTECTED
+   /api/pinterest
    ============================================================ */
 app.post("/api/pinterest", requireAuth, async (req, res) => {
   try {
@@ -456,7 +445,7 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
 
 
 /* ============================================================
-   /api/spotify — PROTECTED — pakai provider ikyyxd (ytplayv3)
+   /api/spotify — pakai provider ikyyxd + extract videoId
    ============================================================ */
 app.post("/api/spotify", requireAuth, async (req, res) => {
   try {
@@ -480,7 +469,7 @@ app.post("/api/spotify", requireAuth, async (req, res) => {
 
     const r = data.result;
 
-    // Format duration: dari detik (211) jadi "3:31"
+    // Format duration
     let durationText = "";
     if (r.duration) {
       const total = Number(r.duration);
@@ -491,13 +480,26 @@ app.post("/api/spotify", requireAuth, async (req, res) => {
       }
     }
 
-    // Parse artis dari title — biasanya format "ARTIST - Title"
+    // Parse artist & title
     let title = safeText(r.title, 200);
     let artist = "";
     const dashIdx = title.indexOf(" - ");
     if (dashIdx > 0) {
       artist = title.slice(0, dashIdx).trim();
       title = title.slice(dashIdx + 3).trim();
+    }
+
+    // Extract YouTube video ID
+    let videoId = "";
+    if (typeof r.source === "string") {
+      try {
+        const u = new URL(r.source);
+        if (u.hostname.includes("youtube.com")) {
+          videoId = u.searchParams.get("v") || "";
+        } else if (u.hostname === "youtu.be") {
+          videoId = u.pathname.slice(1).split("/")[0] || "";
+        }
+      } catch {}
     }
 
     res.json({
@@ -507,6 +509,7 @@ app.post("/api/spotify", requireAuth, async (req, res) => {
         artist,
         thumbnail: typeof r.thumbnail === "string" && r.thumbnail.startsWith("https://") ? r.thumbnail : "",
         url: typeof r.source === "string" && r.source.startsWith("https://") ? r.source : "",
+        videoId,
         duration: durationText,
         source: "YouTube"
       }
@@ -520,7 +523,7 @@ app.post("/api/spotify", requireAuth, async (req, res) => {
 
 
 /* ============================================================
-   /api/react — PROTECTED
+   /api/react
    ============================================================ */
 app.post("/api/react", requireAuth, async (req, res) => {
   try {
