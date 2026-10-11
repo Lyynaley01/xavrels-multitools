@@ -682,61 +682,70 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
 
     const data = fp_parseAmFinderResponse(response.data);
     if (!data) throw new Error("API tidak mengembalikan data.");
-
-    const presetUrls = fp_findPresetUrls(data);
-    let presetUrl = presetUrls[0] || null;
-
-    if (!presetUrl) {
-      const allUrls = fp_findAllUrls(data);
-      presetUrl = allUrls.find((u) => {
-        const l = u.toLowerCase();
-        return !l.includes("tiktok.com") &&
-          (l.includes("preset") || l.includes("alight") || l.includes("xml") || l.includes("project"));
-      }) || null;
-    }
-
-    if (!presetUrl) throw new Error("Link preset tidak ditemukan pada response API.");
+    if (data.found === false) throw new Error("Preset tidak ditemukan di video ini.");
 
     const video        = data.video        || {};
     const authorDetail = data.authorDetail || {};
-    const presetLinks  = Array.isArray(data.presetLinks)
+    const stats        = video.stats || {};
+
+    const presetLinks = Array.isArray(data.presetLinks)
       ? data.presetLinks
           .filter((i) => i?.url && typeof i.url === "string")
           .map((i) => ({
             type: safeText(String(i.type || ""), 40),
             title: safeText(String(i.title || ""), 120),
-            url: safeText(i.url, 800),
+            url: safeText(i.url, 1000),
+            thumb: typeof i.thumb === "string" && /^https?:\/\//i.test(i.thumb) ? i.thumb : "",
             size: safeText(String(i.size || ""), 40),
             ratio: safeText(String(i.ratio || ""), 40),
-            detail: safeText(String(i.detail || ""), 200)
+            detail: safeText(String(i.detail || ""), 200),
+            source: safeText(String(i.source || ""), 40),
+            verified: i.verified === true,
+            byAuthor: i.byAuthor === true
           }))
       : [];
-    const selectedPreset = fp_firstPresetLink(presetLinks);
+
+    const otherLinks = Array.isArray(data.otherLinks)
+      ? data.otherLinks
+          .filter((l) => l?.url && typeof l.url === "string" && /^https?:\/\//i.test(l.url))
+          .slice(0, 10)
+          .map((l) => ({
+            url: safeText(l.url, 1000),
+            source: safeText(String(l.source || ""), 40)
+          }))
+      : [];
 
     const result = {
-      username:
-        safeText(String(data.author || authorDetail.uniqueId || ""), 80) ||
-        "Tidak diketahui",
-      nickname: safeText(String(authorDetail.nickname || ""), 80),
-      bio: safeText(String(authorDetail.bio || ""), 300),
+      author: safeText(String(data.author || ""), 80),
+      username: safeText(String(authorDetail.uniqueId || ""), 80),
+      nickname: safeText(String(authorDetail.nickname || ""), 120),
+      bio: safeText(String(authorDetail.bio || ""), 500),
+      bioLink: typeof authorDetail.bioLink === "string" && /^https?:\/\//i.test(authorDetail.bioLink)
+        ? safeText(authorDetail.bioLink, 500)
+        : "",
       avatar: typeof authorDetail.avatar === "string" && /^https?:\/\//i.test(authorDetail.avatar)
         ? authorDetail.avatar
         : "",
+
+      videoId: safeText(String(video.id || ""), 40),
+      sourceUrl: safeText(String(video.url || inputUrl), 500),
       caption: safeText(String(video.description || ""), 500),
       cover: typeof video.cover === "string" && /^https?:\/\//i.test(video.cover)
         ? video.cover
         : "",
-      sourceUrl: typeof video.url === "string" && /^https?:\/\//i.test(video.url)
-        ? video.url
-        : (inputUrl || ""),
-      presetUrl: safeText(selectedPreset?.url || presetUrl, 800),
-      presetLinks,
+      videoUrl: typeof video.playUrlNoWm === "string" && /^https?:\/\//i.test(video.playUrlNoWm)
+        ? video.playUrlNoWm
+        : (typeof video.playUrl === "string" && /^https?:\/\//i.test(video.playUrl) ? video.playUrl : ""),
+
       stats: {
-        likes: Number(video.stats?.likes || 0) || null,
-        comments: Number(video.stats?.comments || 0) || null,
-        shares: Number(video.stats?.shares || 0) || null,
-        plays: Number(video.stats?.plays || 0) || null
-      }
+        views:    Number(stats.views)    || 0,
+        likes:    Number(stats.likes)    || 0,
+        comments: Number(stats.comments) || 0,
+        shares:   Number(stats.shares)   || 0
+      },
+
+      presetLinks,
+      otherLinks
     };
 
     res.set("Cache-Control", "no-store");

@@ -1001,91 +1001,137 @@ if (item.audio) {
 /* =========================================================
    RENDER FPRESET — Alight Motion Preset Finder
    ========================================================= */
+/* =========================================================
+   RENDER FPRESET — Alight Motion Preset Finder
+   ========================================================= */
 function renderFpreset(data) {
   const item = data.result || {};
+  const stats = item.stats || {};
+  const presetLinks = Array.isArray(item.presetLinks) ? item.presetLinks : [];
+  const otherLinks = Array.isArray(item.otherLinks) ? item.otherLinks : [];
+
   resultShell.hidden = false;
   resultArea.replaceChildren();
 
   const card = document.createElement("article");
   card.className = "fpreset-result-card";
 
-  /* ===== HERO ===== */
-  const hero = document.createElement("div");
-  hero.className = "fpreset-hero";
+  /* ===== HEADER: Avatar + Nama + Bio ===== */
+  const header = document.createElement("div");
+  header.className = "fpreset-header";
 
-  if (item.cover) {
-    const bg = document.createElement("div");
-    bg.className = "fpreset-hero-bg";
-    bg.style.backgroundImage = `url("${item.cover}")`;
-    hero.append(bg);
-  }
-
-  const overlay = document.createElement("div");
-  overlay.className = "fpreset-hero-overlay";
-
-  const cover = document.createElement("div");
-  cover.className = "fpreset-hero-cover";
+  const avatar = document.createElement("div");
+  avatar.className = "fpreset-avatar";
   if (item.avatar) {
-    const av = document.createElement("img");
-    av.src = item.avatar;
-    av.alt = "Avatar";
-    av.loading = "lazy";
-    av.onerror = () => { cover.textContent = "🎬"; };
-    cover.append(av);
-  } else if (item.cover) {
-    const im = document.createElement("img");
-    im.src = item.cover;
-    im.alt = "Cover";
-    im.loading = "lazy";
-    cover.append(im);
+    const img = document.createElement("img");
+    img.src = item.avatar;
+    img.alt = item.nickname || "Avatar";
+    img.loading = "lazy";
+    img.onerror = () => { avatar.textContent = "🎬"; };
+    avatar.append(img);
   } else {
-    cover.textContent = "🎬";
+    avatar.textContent = "🎬";
   }
-  overlay.append(cover);
 
   const info = document.createElement("div");
-  info.className = "fpreset-hero-info";
+  info.className = "fpreset-header-info";
 
-  const titleEl = document.createElement("h2");
-  titleEl.className = "fpreset-hero-title";
-  titleEl.textContent = item.nickname || item.username || "Creator TikTok";
+  const nameRow = document.createElement("div");
+  nameRow.className = "fpreset-name-row";
 
-  const userEl = document.createElement("p");
-  userEl.className = "fpreset-hero-user";
-  userEl.textContent = item.username ? `@${item.username.replace(/^@/, "")}` : "";
+  const nickname = document.createElement("h2");
+  nickname.className = "fpreset-nickname";
+  nickname.textContent = item.nickname || item.username || "Creator TikTok";
+  nameRow.append(nickname);
 
-  info.append(titleEl);
-  if (userEl.textContent) info.append(userEl);
-
-  const metaRow = document.createElement("div");
-  metaRow.className = "fpreset-hero-meta";
-
-  if (item.stats?.likes) {
-    const c = document.createElement("span");
-    c.className = "fpreset-chip";
-    c.innerHTML = `❤️ <b>${formatNumber(item.stats.likes)}</b>`;
-    metaRow.append(c);
-  }
-  if (item.stats?.plays) {
-    const c = document.createElement("span");
-    c.className = "fpreset-chip";
-    c.innerHTML = `▶ <b>${formatNumber(item.stats.plays)}</b>`;
-    metaRow.append(c);
-  }
-  const presetCount = Array.isArray(item.presetLinks) ? item.presetLinks.length : 0;
-  if (presetCount > 0) {
-    const c = document.createElement("span");
-    c.className = "fpreset-chip fpreset-chip-accent";
-    c.innerHTML = `🎬 <b>${presetCount} preset</b>`;
-    metaRow.append(c);
+  // Verified badge — kalau ada preset verified
+  if (presetLinks.some(p => p.verified)) {
+    const badge = document.createElement("span");
+    badge.className = "fpreset-verified";
+    badge.textContent = "✓";
+    badge.title = "Verified";
+    nameRow.append(badge);
   }
 
-  if (metaRow.children.length) info.append(metaRow);
-  overlay.append(info);
-  hero.append(overlay);
-  card.append(hero);
+  const username = document.createElement("p");
+  username.className = "fpreset-username";
+  username.textContent = item.username ? `@${item.username.replace(/^@/, "")}` : "";
 
-  /* ===== Caption ===== */
+  info.append(nameRow);
+  if (username.textContent) info.append(username);
+
+  // Bio
+  if (item.bio) {
+    const bio = document.createElement("p");
+    bio.className = "fpreset-bio";
+    bio.textContent = item.bio;
+    info.append(bio);
+  }
+
+  header.append(avatar, info);
+  card.append(header);
+
+  /* ===== STATS ROW ===== */
+  if (stats.views || stats.likes || stats.comments || stats.shares) {
+    const statsRow = document.createElement("div");
+    statsRow.className = "fpreset-stats";
+
+    if (stats.views) {
+      const s = document.createElement("span");
+      s.className = "fpreset-stat";
+      s.innerHTML = `<b>${formatNumber(stats.views)}</b> views`;
+      statsRow.append(s);
+    }
+    if (stats.likes) {
+      const s = document.createElement("span");
+      s.className = "fpreset-stat";
+      s.innerHTML = `<b>${formatNumber(stats.likes)}</b> likes`;
+      statsRow.append(s);
+    }
+    if (stats.comments) {
+      const s = document.createElement("span");
+      s.className = "fpreset-stat";
+      s.innerHTML = `<b>${formatNumber(stats.comments)}</b> comments`;
+      statsRow.append(s);
+    }
+    if (stats.shares) {
+      const s = document.createElement("span");
+      s.className = "fpreset-stat";
+      s.innerHTML = `<b>${formatNumber(stats.shares)}</b> shares`;
+      statsRow.append(s);
+    }
+
+    card.append(statsRow);
+  }
+
+  /* ===== VIDEO THUMBNAIL (clickable → modal) ===== */
+  if (item.cover || item.videoUrl) {
+    const videoWrap = document.createElement("div");
+    videoWrap.className = "fpreset-video-thumb";
+    if (item.cover) {
+      videoWrap.style.backgroundImage = `url("${item.cover}")`;
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "fpreset-video-overlay";
+
+    const playBtn = document.createElement("div");
+    playBtn.className = "fpreset-play-btn";
+    playBtn.innerHTML = `<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+
+    const playText = document.createElement("span");
+    playText.className = "fpreset-play-text";
+    playText.textContent = "Klik untuk putar video";
+
+    overlay.append(playBtn, playText);
+    videoWrap.append(overlay);
+
+    videoWrap.addEventListener("click", () => openFpresetVideoModal(item));
+
+    card.append(videoWrap);
+  }
+
+  /* ===== CAPTION ===== */
   if (item.caption) {
     const cap = document.createElement("div");
     cap.className = "fpreset-caption";
@@ -1093,8 +1139,7 @@ function renderFpreset(data) {
     card.append(cap);
   }
 
-  /* ===== Preset links list ===== */
-  const presetLinks = Array.isArray(item.presetLinks) ? item.presetLinks : [];
+  /* ===== PRESET LIST ===== */
   if (presetLinks.length) {
     const listWrap = document.createElement("div");
     listWrap.className = "fpreset-list";
@@ -1108,6 +1153,25 @@ function renderFpreset(data) {
       const row = document.createElement("div");
       row.className = "fpreset-item";
 
+      // Thumbnail preset (kalau ada)
+      if (p.thumb) {
+        const thumb = document.createElement("div");
+        thumb.className = "fpreset-item-thumb";
+        const img = document.createElement("img");
+        img.src = p.thumb;
+        img.alt = p.title || "Preset";
+        img.loading = "lazy";
+        img.onerror = () => { thumb.remove(); };
+        thumb.append(img);
+        row.append(thumb);
+      }
+
+      const body = document.createElement("div");
+      body.className = "fpreset-item-body";
+
+      const titleRow = document.createElement("div");
+      titleRow.className = "fpreset-item-title-row";
+
       const badge = document.createElement("span");
       badge.className = "fpreset-item-type";
       const typeRaw = String(p.type || "").toLowerCase();
@@ -1117,23 +1181,34 @@ function renderFpreset(data) {
       else if (typeRaw.includes("xml") || titleRaw.includes("xml")) label = "XML";
       badge.textContent = label;
 
-      const body = document.createElement("div");
-      body.className = "fpreset-item-body";
-
       const name = document.createElement("strong");
       name.textContent = p.title || `Preset ${i + 1}`;
-      body.append(name);
+      titleRow.append(badge, name);
+
+      if (p.verified) {
+        const v = document.createElement("span");
+        v.className = "fpreset-item-verified";
+        v.textContent = "✓";
+        v.title = "Verified";
+        titleRow.append(v);
+      }
+
+      body.append(titleRow);
 
       const metaBits = [];
-      if (p.size) metaBits.push(`📦 ${p.size}`);
-      if (p.ratio) metaBits.push(`📐 ${p.ratio}`);
+      if (p.size) metaBits.push(p.size);
+      if (p.ratio) metaBits.push(p.ratio);
+      if (p.byAuthor) metaBits.push("by creator");
       if (metaBits.length) {
         const meta = document.createElement("span");
+        meta.className = "fpreset-item-meta";
         meta.textContent = metaBits.join(" · ");
         body.append(meta);
       }
-      if (p.detail) {
+
+      if (p.detail && p.detail !== p.title) {
         const detail = document.createElement("small");
+        detail.className = "fpreset-item-detail";
         detail.textContent = p.detail;
         body.append(detail);
       }
@@ -1146,7 +1221,7 @@ function renderFpreset(data) {
       action.setAttribute("download", "");
       action.innerHTML = `⬇ <span>DOWNLOAD</span>`;
 
-      row.append(badge, body, action);
+      row.append(body, action);
       listWrap.append(row);
     });
 
@@ -1154,11 +1229,52 @@ function renderFpreset(data) {
   } else {
     const empty = document.createElement("div");
     empty.className = "fpreset-no-preset";
-    empty.textContent = "⚠️ Tidak ada preset 5MB/XML di response API ini.";
+    empty.textContent = "⚠️ Tidak ada preset 5MB/XML di video ini.";
     card.append(empty);
   }
 
-  /* ===== Actions ===== */
+  /* ===== OTHER LINKS ===== */
+  if (otherLinks.length) {
+    const linksWrap = document.createElement("div");
+    linksWrap.className = "fpreset-links";
+
+    const linksTitle = document.createElement("div");
+    linksTitle.className = "fpreset-links-title";
+    linksTitle.textContent = "🔗 Link dari creator";
+    linksWrap.append(linksTitle);
+
+    otherLinks.forEach((l) => {
+      const a = document.createElement("a");
+      a.className = "fpreset-link-item";
+      a.href = l.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+
+      // Icon + label berdasarkan hostname
+      try {
+        const u = new URL(l.url);
+        const host = u.hostname.replace(/^www\./, "");
+
+        if (host.includes("whatsapp") || host.includes("wa.me")) {
+          a.innerHTML = `💬 <span>WhatsApp</span>`;
+        } else if (host.includes("linktr.ee")) {
+          a.innerHTML = `🌳 <span>Linktree</span>`;
+        } else if (host.includes("instagram")) {
+          a.innerHTML = `📸 <span>Instagram</span>`;
+        } else {
+          a.innerHTML = `🔗 <span>${host}</span>`;
+        }
+      } catch {
+        a.innerHTML = `🔗 <span>Link</span>`;
+      }
+
+      linksWrap.append(a);
+    });
+
+    card.append(linksWrap);
+  }
+
+  /* ===== ACTIONS ===== */
   const actions = document.createElement("div");
   actions.className = "fpreset-actions";
 
@@ -1171,16 +1287,6 @@ function renderFpreset(data) {
     open.textContent = "▶  BUKA DI TIKTOK";
     actions.append(open);
   }
-  if (item.presetUrl) {
-    const dl = document.createElement("a");
-    dl.className = "download-btn fpreset-primary";
-    dl.href = item.presetUrl;
-    dl.target = "_blank";
-    dl.rel = "noopener noreferrer";
-    dl.setAttribute("download", "");
-    dl.textContent = "⬇  DOWNLOAD PRESET UTAMA";
-    actions.append(dl);
-  }
 
   if (actions.children.length) card.append(actions);
 
@@ -1188,6 +1294,187 @@ function renderFpreset(data) {
 
   const note = $("#resultHeadingNote");
   if (note) note.textContent = `${presetLinks.length} preset ditemukan`;
+}
+
+
+/* =========================================================
+   FPRESET VIDEO MODAL
+   ========================================================= */
+function openFpresetVideoModal(item) {
+  const old = document.getElementById("fpresetVideoModal");
+  if (old) old.remove();
+
+  const modal = document.createElement("div");
+  modal.className = "fpreset-video-modal-backdrop";
+  modal.id = "fpresetVideoModal";
+
+  const stats = item.stats || {};
+
+  modal.innerHTML = `
+    <div class="fpreset-video-modal">
+      <button class="fpreset-video-close" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="fpreset-video-stage">
+        <video
+          class="fpreset-video-el"
+          src="${item.videoUrl || ''}"
+          poster="${item.cover || ''}"
+          playsinline
+          preload="metadata"
+          crossorigin="anonymous">
+        </video>
+
+        <div class="fpreset-video-controls">
+          <button type="button" class="fpv-play-btn" aria-label="Play">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="fpv-progress" tabindex="0" role="slider">
+            <div class="fpv-progress-bg"></div>
+            <div class="fpv-progress-fill"></div>
+            <div class="fpv-progress-thumb"></div>
+          </div>
+          <span class="fpv-time">0:00</span>
+          <button type="button" class="fpv-mute-btn" aria-label="Mute">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          </button>
+        </div>
+
+        <div class="fpreset-video-loading">⏳ Memuat video...</div>
+      </div>
+
+      ${item.caption ? `
+        <div class="fpreset-video-caption">
+          ${escapeHtml(item.caption)}
+        </div>
+      ` : ""}
+
+      <div class="fpreset-video-meta">
+        ${item.nickname ? `<span class="fpv-meta-item"><b>${escapeHtml(item.nickname)}</b></span>` : ""}
+        ${stats.views ? `<span class="fpv-meta-item">👁 <b>${formatNumber(stats.views)}</b></span>` : ""}
+        ${stats.likes ? `<span class="fpv-meta-item">❤️ <b>${formatNumber(stats.likes)}</b></span>` : ""}
+        ${stats.comments ? `<span class="fpv-meta-item">💬 <b>${formatNumber(stats.comments)}</b></span>` : ""}
+        ${stats.shares ? `<span class="fpv-meta-item">🔗 <b>${formatNumber(stats.shares)}</b></span>` : ""}
+      </div>
+    </div>
+  `;
+
+  document.body.append(modal);
+  document.body.style.overflow = "hidden";
+
+  const video = modal.querySelector(".fpreset-video-el");
+  const playBtn = modal.querySelector(".fpv-play-btn");
+  const muteBtn = modal.querySelector(".fpv-mute-btn");
+  const progress = modal.querySelector(".fpv-progress");
+  const progressFill = modal.querySelector(".fpv-progress-fill");
+  const progressThumb = modal.querySelector(".fpv-progress-thumb");
+  const timeEl = modal.querySelector(".fpv-time");
+  const loading = modal.querySelector(".fpreset-video-loading");
+
+  let muted = false;
+  let dragging = false;
+
+  function fmtTime(sec) {
+    if (!sec || isNaN(sec)) return "0:00";
+    const m = Math.floor(sec / 60);
+    const s = String(Math.floor(sec % 60)).padStart(2, "0");
+    return `${m}:${s}`;
+  }
+
+  function updateProgress() {
+    const dur = video.duration;
+    const cur = video.currentTime;
+    if (dur && !isNaN(dur)) {
+      const pct = (cur / dur) * 100;
+      progressFill.style.width = `${pct}%`;
+      progressThumb.style.left = `${pct}%`;
+      timeEl.textContent = fmtTime(cur);
+    }
+  }
+
+  function updatePlayState() {
+    if (video.paused) {
+      playBtn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      playBtn.setAttribute("aria-label", "Play");
+    } else {
+      playBtn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>`;
+      playBtn.setAttribute("aria-label", "Pause");
+    }
+  }
+
+  playBtn.addEventListener("click", () => {
+    if (video.paused) {
+      video.play().catch(e => console.error("[FPRESET VIDEO] play error:", e));
+    } else {
+      video.pause();
+    }
+  });
+
+  muteBtn.addEventListener("click", () => {
+    muted = !muted;
+    video.muted = muted;
+    muteBtn.style.opacity = muted ? "0.4" : "1";
+  });
+
+  video.addEventListener("play", updatePlayState);
+  video.addEventListener("pause", updatePlayState);
+  video.addEventListener("timeupdate", updateProgress);
+  video.addEventListener("loadedmetadata", () => {
+    updateProgress();
+    loading.style.display = "none";
+  });
+  video.addEventListener("error", () => {
+    loading.innerHTML = "❌ Video tidak dapat diputar. Klik tombol BUKA DI TIKTOK.";
+    loading.style.display = "block";
+  });
+  video.addEventListener("canplay", () => { loading.style.display = "none"; });
+
+  // Klik video = toggle play
+  video.addEventListener("click", () => playBtn.click());
+
+  // Seek
+  function seekTo(clientX) {
+    const rect = progress.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    if (video.duration && !isNaN(video.duration)) {
+      video.currentTime = pct * video.duration;
+      updateProgress();
+    }
+  }
+  progress.addEventListener("mousedown", (e) => { dragging = true; progress.classList.add("is-dragging"); seekTo(e.clientX); e.preventDefault(); });
+  progress.addEventListener("touchstart", (e) => { dragging = true; progress.classList.add("is-dragging"); seekTo(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  window.addEventListener("mousemove", (e) => { if (dragging) seekTo(e.clientX); });
+  window.addEventListener("touchmove", (e) => { if (dragging) seekTo(e.touches[0].clientX); }, { passive: false });
+  window.addEventListener("mouseup", () => { dragging = false; progress.classList.remove("is-dragging"); });
+  window.addEventListener("touchend", () => { dragging = false; progress.classList.remove("is-dragging"); });
+
+  // Close
+  function close() {
+    video.pause();
+    document.body.style.overflow = "";
+    modal.style.animation = "fpvFadeOut 0.2s ease forwards";
+    const card = modal.querySelector(".fpreset-video-modal");
+    if (card) card.style.animation = "fpvPopOut 0.2s ease forwards";
+    setTimeout(() => modal.remove(), 200);
+  }
+
+  modal.querySelector(".fpreset-video-close").addEventListener("click", close);
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  document.addEventListener("keydown", function escHandler(e) {
+    if (e.key === "Escape") { close(); document.removeEventListener("keydown", escHandler); }
+  });
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatNumber(n) {
