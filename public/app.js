@@ -145,17 +145,27 @@ const toolInfo = {
     endpoint: "api/spotify", button: "FIND MUSIC",
     supportsUpload: false
   },
-  fpreset: {
-  title: "AM PRESET FINDER", titleLead: "AM PRESET", titleAccent: "FINDER", issue: "TOOL 06", number: "06",
-  category: "PRESET LAB", icon: "🎬",
-  description: "Cari preset Alight Motion dari link TikTok atau keyword.",
-  tip: "Pilih mode: paste link video langsung, atau cari pakai keyword.",
-  label: "Link video TikTok", placeholder: "https://www.tiktok.com/@user/video/...", inputType: "url",
-  endpoint: "api/fpreset", searchEndpoint: "api/fpreset-search",
-  button: "FIND PRESET", searchButton: "CARI VIDEO",
-  supportsUpload: false,
-  supportsModeSwitch: true
-}
+    fpreset: {
+    title: "AM PRESET FINDER", titleLead: "AM PRESET", titleAccent: "FINDER", issue: "TOOL 06", number: "06",
+    category: "PRESET LAB", icon: "🎬",
+    description: "Cari preset Alight Motion dari link TikTok atau keyword.",
+    tip: "Pilih mode: paste link video langsung, atau cari pakai keyword.",
+    label: "Link video TikTok", placeholder: "https://www.tiktok.com/@user/video/...", inputType: "url",
+    endpoint: "api/fpreset", searchEndpoint: "api/fpreset-search",
+    button: "FIND PRESET", searchButton: "CARI VIDEO",
+    supportsUpload: false,
+    supportsModeSwitch: true
+  },
+  "random-cecan": {
+    title: "RANDOM CECAN", titleLead: "RANDOM", titleAccent: "CECAN", issue: "TOOL 07", number: "07",
+    category: "FUN LAB", icon: "🌸",
+    description: "Gacha foto cewek cantik dari berbagai negara secara random.",
+    tip: "Pilih negara dulu, lalu klik GACHA untuk dapat foto random.",
+    label: "Pilih negara", placeholder: "", inputType: "text",
+    endpoint: "api/random-cecan", button: "GACHA FOTO",
+    supportsUpload: false,
+    isCustomTool: "random-cecan" // ← flag khusus, biar render-nya beda
+  }
 };
 
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
@@ -1576,6 +1586,215 @@ function renderFpresetSearch(data) {
   if (note) note.textContent = `${videos.length} video`;
 }
 
+/* =========================================================
+   RANDOM CECAN — Custom Tool UI
+   ========================================================= */
+const CECAN_COUNTRIES = [
+  { key: "china",     label: "China",     flag: "🇨🇳" },
+  { key: "japan",     label: "Jepang",    flag: "🇯🇵" },
+  { key: "korea",     label: "Korea",     flag: "🇰🇷" },
+  { key: "indonesia", label: "Indonesia", flag: "🇮🇩" },
+];
+
+let selectedCecanCountry = "china"; // default
+
+function renderRandomCecanTool() {
+  // Hide input modes (URL/Upload)
+  if (inputTabs) inputTabs.hidden = true;
+  if (modeUrl) modeUrl.hidden = true;
+  if (modeUpload) modeUpload.hidden = true;
+
+  const form = $("#toolForm");
+  const inputMode = $("#modeUrl"); // dummy
+  const label = $("#inputLabel");
+
+  // Hide label & input default
+  if (label) label.parentElement.hidden = true;
+
+  // Cari wrapper form
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  // Hapus field tambahan yang lama (kalau ada)
+  const oldCustom = document.getElementById("cecanCustomUI");
+  if (oldCustom) oldCustom.remove();
+
+  // Bikin UI custom
+  const wrap = document.createElement("div");
+  wrap.id = "cecanCustomUI";
+  wrap.className = "cecan-custom-ui";
+  wrap.innerHTML = `
+    <label class="cecan-label">Pilih negara cewek:</label>
+    <div class="cecan-country-grid">
+      ${CECAN_COUNTRIES.map(c => `
+        <button
+          type="button"
+          class="cecan-country-btn ${c.key === selectedCecanCountry ? "active" : ""}"
+          data-country="${c.key}">
+          <span class="cecan-flag">${c.flag}</span>
+          <span class="cecan-name">${c.label}</span>
+        </button>
+      `).join("")}
+    </div>
+    <button type="button" class="cecan-gacha-btn" id="cecanGachaBtn">
+      <span class="cecan-gacha-icon">🎲</span>
+      <span>GACHA FOTO</span>
+    </button>
+  `;
+
+  // Insert sebelum submit button
+  const submitBtn = document.getElementById("submitBtn");
+  if (submitBtn) {
+    formEl.insertBefore(wrap, submitBtn);
+  } else {
+    formEl.append(wrap);
+  }
+
+  // Sembunyiin submit button default (karena kita pake tombol GACHA custom)
+  if (submitBtn) submitBtn.hidden = true;
+
+  // Attach event: pilih negara
+  wrap.querySelectorAll(".cecan-country-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      wrap.querySelectorAll(".cecan-country-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedCecanCountry = btn.dataset.country;
+      console.log("[RANDOM-CECAN] Selected:", selectedCecanCountry);
+    });
+  });
+
+  // Attach event: gacha
+  const gachaBtn = document.getElementById("cecanGachaBtn");
+  if (gachaBtn) {
+    gachaBtn.addEventListener("click", () => runRandomCecanGacha(gachaBtn));
+  }
+
+  // Clear result area
+  clearResult();
+
+  console.log("[RANDOM-CECAN] Tool ready, selected:", selectedCecanCountry);
+}
+
+/* =========================================================
+   RANDOM CECAN — Execute Gacha
+   ========================================================= */
+async function runRandomCecanGacha(btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `<span class="cecan-gacha-icon">⏳</span><span>MENCARI CEWEK ${CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry)?.label.toUpperCase()}...</span>`;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+
+  // Loading
+  showMessage("Sedang mengambil foto random... ✨", "loading");
+
+  try {
+    const token = await ensureSession();
+
+    const url = `/api/random-cecan?country=${encodeURIComponent(selectedCecanCountry)}`;
+    let response = await fetch(url, {
+      method: "GET",
+      headers: { "X-Session-Token": token },
+    });
+
+    if (response.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      response = await fetch(url, {
+        method: "GET",
+        headers: { "X-Session-Token": fresh },
+      });
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    // Response binary image
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    // Simpan reference
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    const cfg = CECAN_COUNTRIES.find(c => c.key === selectedCecanCountry);
+
+    // Render result
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "cecan-result-card";
+
+    const wrap = document.createElement("div");
+    wrap.className = "cecan-result-image-wrap";
+
+    const img = document.createElement("img");
+    img.className = "cecan-result-img";
+    img.src = objectUrl;
+    img.alt = `Random Cecan ${cfg?.label || ""}`;
+    img.loading = "lazy";
+
+    wrap.append(img);
+
+    const meta = document.createElement("div");
+    meta.className = "cecan-result-meta";
+    meta.innerHTML = `
+      <div class="cecan-result-info">
+        <strong>${cfg?.flag || "🌸"} Random Cecan — ${cfg?.label || "Unknown"}</strong>
+        <span>Foto random berhasil didapat!</span>
+      </div>
+      <div class="cecan-result-actions">
+        <a class="download-btn" href="${objectUrl}" download="xavrels-cecan-${cfg?.key || "unknown"}-${Date.now()}.jpg">
+          ↓ SIMPAN FOTO
+        </a>
+      </div>
+    `;
+
+    card.append(wrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = `Berhasil — ${cfg?.label || ""}`;
+
+  } catch (err) {
+    console.error("[RANDOM-CECAN] Error:", err.message);
+    showMessage(err.message || "Gagal mengambil foto. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `<span class="cecan-gacha-icon">🎲</span><span>GACHA FOTO</span>`;
+    }
+  }
+}
+
+// Pastikan saat pindah tool lain, custom UI dibersihin
+const _originalClearResult = clearResult;
+clearResult = function() {
+  const custom = document.getElementById("cecanCustomUI");
+  if (custom) custom.remove();
+
+  // Balikin submit button visibility
+  const submitBtn = document.getElementById("submitBtn");
+  if (submitBtn) submitBtn.hidden = false;
+
+  // Balikin label & input
+  const label = document.getElementById("inputLabel");
+  if (label && label.parentElement) label.parentElement.hidden = false;
+
+  _originalClearResult.apply(this, arguments);
+};
+
 
 /* =========================================================
    EXECUTE FIND PRESET DARI CARD VIDEO
@@ -2014,11 +2233,17 @@ if (info.supportsUpload) {
 }
 
   $("#secondField").hidden = key !== "react";
-  extra.value = "";
-  extra.required = key === "react";
+extra.value = "";
+extra.required = key === "react";
 
-  submit.disabled = false;
-  submitLabel.textContent = info.button;
+submit.disabled = false;
+submitLabel.textContent = info.button;
+
+// ── Khusus Random Cecan: UI custom ──
+if (key === "random-cecan") {
+  renderRandomCecanTool();
+  return;
+}
 
   clearResult();
 // Reset fpreset state

@@ -1096,6 +1096,71 @@ app.post("/api/fpreset-search", requireAuth, async (req, res) => {
   }
 });
 
+/* ============================================================
+   /api/random-cecan — Random Cecan Generator
+   ============================================================ */
+const CECAN_COUNTRIES = {
+  china:     { label: "China",     flag: "🇨🇳", api: "https://api.ikyyxd.my.id/random/cecan/china" },
+  japan:     { label: "Jepang",    flag: "🇯🇵", api: "https://api.ikyyxd.my.id/random/cecan/japan" },
+  korea:     { label: "Korea",     flag: "🇰🇷", api: "https://api.ikyyxd.my.id/random/cecan/korea" },
+  indonesia: { label: "Indonesia", flag: "🇮🇩", api: "https://api.ikyyxd.my.id/random/cecan/indonesia" },
+};
+
+app.get("/api/random-cecan", requireAuth, async (req, res) => {
+  try {
+    // Bot detection
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/random-cecan] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // Rate limit per IP (10 req/menit — tool gacha, boleh lebih longgar)
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "random-cecan", 10);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    const country = safeText(req.query?.country, 20).toLowerCase();
+    const cfg = CECAN_COUNTRIES[country];
+    if (!cfg) {
+      throw new Error("Negara tidak tersedia. Pilih: china, japan, korea, indonesia.");
+    }
+
+    console.log(`📡 [/api/random-cecan] Fetch: ${country}`);
+
+    // Request image dari API (binary)
+    const response = await http.get(cfg.api, {
+      responseType: "arraybuffer",
+      timeout: 45_000,
+      maxContentLength: 15 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8",
+      },
+    });
+
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const buffer = Buffer.from(response.data);
+
+    if (!buffer.length) throw new Error("API mengembalikan gambar kosong.");
+    if (contentType && !contentType.startsWith("image/")) {
+      throw new Error("API tidak mengembalikan file gambar yang valid.");
+    }
+
+    // Set header biar browser tau ini image
+    res.set("Content-Type", contentType || "image/jpeg");
+    res.set("Cache-Control", "no-store"); // Gacha harus fresh tiap request
+    res.set("X-Cecan-Country", country);
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ [/api/random-cecan]", err.message);
+    sendError(res, err);
+  }
+});
+
 
 /* ============================================================
    FALLBACK

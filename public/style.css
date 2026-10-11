@@ -2993,3 +2993,188 @@ footer>span:nth-child(2){order:3;width:100%}
     font-size: 10px;
   }
 }
+
+/* =========================================================
+   RANDOM CECAN — Custom Tool UI
+   ========================================================= */
+.cecan-custom-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.cecan-label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.cecan-country-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cecan-country-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1.5px solid #cfd2d9;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.cecan-country-btn:hover {
+  border-color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.cecan-country-btn.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--red);
+}
+.cecan-flag {
+  font-size: 20px;
+  line-height: 1;
+}
+.cecan-name {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+}
+
+.cecan-gacha-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #e63946, #ff6b7a);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.cecan-gacha-btn:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.cecan-gacha-btn:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.cecan-gacha-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.cecan-gacha-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* ==== Result ==== */
+.cecan-result-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px solid #d9dce2;
+  background: #fff;
+  border-radius: 12px;
+  animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cecan-result-image-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  max-height: 520px;
+  padding: 12px;
+  background: #f2f4f7;
+}
+.cecan-result-img {
+  display: block;
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.cecan-result-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+.cecan-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cecan-result-info strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+.cecan-result-info span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.cecan-result-actions {
+  display: flex;
+  gap: 8px;
+}
+.cecan-result-actions .download-btn {
+  flex: 1;
+}
+
+/* ==== Art untuk card ==== */
+.art-cecan {
+  background-color: #ef7a91;
+}
+
+@media (min-width: 621px) {
+  .cecan-result-meta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .cecan-result-actions .download-btn {
+    flex: 0 0 auto;
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 620px) {
+  .cecan-country-grid {
+    gap: 6px;
+  }
+  .cecan-country-btn {
+    padding: 10px 12px;
+  }
+  .cecan-flag { font-size: 18px; }
+  .cecan-name { font-size: 10px; }
+  .cecan-gacha-btn {
+    font-size: 11px;
+    padding: 14px 16px;
+  }
+}
