@@ -1314,14 +1314,39 @@ function renderFpresetSearch(data) {
     return;
   }
 
+  // ===== PAGINATION CONFIG =====
+  const INITIAL_COUNT = 6;
+  const LOAD_STEP = 6; // tiap klik load 6 lagi
+  let shownCount = 0;
+
+  // Grid container
   const grid = document.createElement("div");
   grid.className = "fpreset-search-grid";
+  resultArea.append(grid);
 
-  videos.forEach((v, i) => {
+  // Wrapper buat tombol "load more" (biar gampang di-remove)
+  const loadMoreWrap = document.createElement("div");
+  loadMoreWrap.className = "fpreset-load-more-wrap";
+  resultArea.append(loadMoreWrap);
+
+  // Counter kecil di bawah grid
+  const counterEl = document.createElement("div");
+  counterEl.className = "fpreset-load-counter";
+  loadMoreWrap.append(counterEl);
+
+  // Tombol "LIHAT LEBIH BANYAK"
+  const loadMoreBtn = document.createElement("button");
+  loadMoreBtn.type = "button";
+  loadMoreBtn.className = "fpreset-load-more-btn";
+  loadMoreBtn.innerHTML = `⬇ <span>LIHAT LEBIH BANYAK</span>`;
+  loadMoreWrap.append(loadMoreBtn);
+
+  // ===== Function: bikin 1 card =====
+  function buildCard(v, i) {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "fpreset-search-card";
-    card.style.animationDelay = `${i * 30}ms`;
+    card.style.animationDelay = `${(i % LOAD_STEP) * 30}ms`;
 
     if (v.cover) {
       card.style.backgroundImage = `url("${v.cover}")`;
@@ -1370,12 +1395,54 @@ function renderFpresetSearch(data) {
     overlay.append(cta);
 
     card.append(overlay);
-
     card.addEventListener("click", () => findPresetFromVideo(v.url, card));
-    grid.append(card);
-  });
 
-  resultArea.append(grid);
+    return card;
+  }
+
+  // ===== Function: render batch =====
+  function renderBatch(count) {
+    const start = shownCount;
+    const end = Math.min(start + count, videos.length);
+
+    for (let i = start; i < end; i++) {
+      grid.append(buildCard(videos[i], i));
+    }
+    shownCount = end;
+
+    // Update counter
+    counterEl.textContent = `Menampilkan ${shownCount} dari ${videos.length} video`;
+
+    // Kalau udah semua, sembunyikan tombol
+    if (shownCount >= videos.length) {
+      loadMoreBtn.hidden = true;
+      counterEl.textContent = `Semua ${videos.length} video sudah ditampilkan`;
+    } else {
+      // Update label tombol: sisa berapa
+      const remaining = videos.length - shownCount;
+      const nextBatch = Math.min(LOAD_STEP, remaining);
+      loadMoreBtn.querySelector("span").textContent =
+        `LIHAT ${nextBatch} VIDEO LAGI`;
+    }
+  }
+
+  // Load pertama (6 video)
+  renderBatch(INITIAL_COUNT);
+
+  // Event klik load more
+  loadMoreBtn.addEventListener("click", () => {
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.innerHTML = `⏳ <span>MEMUAT…</span>`;
+
+    // Pakai setTimeout biar ada efek loading dikit (biar gak kerasa instan)
+    setTimeout(() => {
+      renderBatch(LOAD_STEP);
+      loadMoreBtn.disabled = false;
+      if (shownCount < videos.length) {
+        loadMoreBtn.innerHTML = `⬇ <span>LIHAT LEBIH BANYAK</span>`;
+      }
+    }, 180);
+  });
 
   const note = $("#resultHeadingNote");
   if (note) note.textContent = `${videos.length} video`;

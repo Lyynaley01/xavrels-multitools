@@ -2198,3 +2198,72 @@ footer>span:nth-child(2){order:3;width:100%}
   .fpreset-search-body strong { font-size: 14px; }
   .fpreset-search-desc { -webkit-line-clamp: 1; }
 }
+/* =========================================================
+   FPRESET LOAD MORE — Tombol pagination
+   ========================================================= */
+.fpreset-load-more-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px 10px 4px;
+}
+
+.fpreset-load-counter {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.fpreset-load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 22px;
+  background: var(--ink);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--red);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 200px;
+}
+.fpreset-load-more-btn:hover {
+  background: var(--red);
+  border-color: var(--red);
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: translate(-1px, -1px);
+}
+.fpreset-load-more-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--red);
+}
+.fpreset-load-more-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+  box-shadow: 2px 2px 0 var(--red);
+}
+.fpreset-load-more-btn span {
+  letter-spacing: 1.1px;
+}
+
+@media (max-width: 620px) {
+  .fpreset-load-more-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 13px 16px;
+    font-size: 10px;
+  }
+  .fpreset-load-counter { font-size: 9px; }
+}
