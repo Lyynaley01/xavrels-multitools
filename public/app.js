@@ -502,10 +502,14 @@ function renderImageResult(response) {
     resultArea.replaceChildren();
 
     activeBeforeUrl = null;
-    if (activeTool === "hd" || activeTool === "remove-bg") {
-      if (selectedFile) activeBeforeUrl = URL.createObjectURL(selectedFile);
-      else if (input.value.trim()) activeBeforeUrl = input.value.trim();
-    }
+if (activeTool === "hd" || activeTool === "remove-bg") {
+  if (selectedFile) {
+    activeBeforeUrl = URL.createObjectURL(selectedFile);
+  } else {
+    const inputEl = document.getElementById("toolInput");
+    if (inputEl?.value.trim()) activeBeforeUrl = inputEl.value.trim();
+  }
+}
 
     const canShowBeforeAfter = (activeTool === "hd" || activeTool === "remove-bg") && !!activeBeforeUrl;
 
@@ -1461,13 +1465,15 @@ function renderFpresetSearch(data) {
   resultArea.replaceChildren();
 
   // Simpan state search biar bisa di-restore pas balik dari detail view
-  fpresetSearchState = {
-    keyword: input.value.trim() || "",
-    videos,
-    shownCount: 0,
-    scrollPos: window.scrollY,
-    sort: "default" // default | views | likes
-  };
+  // Simpan state search biar bisa di-restore pas balik dari detail view
+const inputEl = document.getElementById("toolInput");
+fpresetSearchState = {
+  keyword: inputEl?.value?.trim() || "",
+  videos,
+  shownCount: 0,
+  scrollPos: window.scrollY,
+  sort: "default" // default | views | likes
+};
   fpresetInDetailView = false;
 
   const summary = document.createElement("div");
@@ -2783,12 +2789,11 @@ if (key === "faceswap") {
   }
 
 // ═══════════════════════════════════════════════
-// GENERIC TOOL (HD, Remove BG, React, Pinterest, Spotify, Fpreset)
-// ═══════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════
 // SPECIAL TOOL: WA CHANNEL REACT (dengan Coin UI)
 // ═══════════════════════════════════════════════
+
+restoreOriginalForm();  // ← TAMBAH INI
+
 if (key === "react") {
   $("#workspaceIssue").textContent = info.issue;
   $("#workspaceIcon").textContent = info.icon;
@@ -2816,8 +2821,6 @@ if (key === "react") {
   window.scrollTo({ top: 0, behavior: "smooth" });
   return;
 }
-
-restoreOriginalForm();  // ← TAMBAH INI
 
 // Re-attach event listeners karena DOM baru di-restore
 const inputTabs2 = document.getElementById("inputTabs");
@@ -3129,27 +3132,28 @@ if (form) {
         throw new Error(message);
       }
 
-      if (contentType.startsWith("image/")) {
-        await renderImageResult(response);
-      } else {
-        const data = await response.json();
-        if (!data.ok) throw new Error(data.error || "Request gagal.");
-        if (activeTool === "pinterest") renderPinterest(data);
-        else if (activeTool === "spotify") renderMusic(data);
-        else if (activeTool === "fpreset") {
-          if (inputMode === "upload") renderFpresetSearch(data);
-          else renderFpreset(data);
-        }
-        else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
-      }
-      // Kalau react sukses, update coin display
-if (activeTool === "react" && data.coin !== undefined) {
-  coinBalance.coin = data.coin;
-  if (data.dailyUsed !== undefined) coinBalance.dailyUsed = data.dailyUsed;
-  if (data.dailyLimit !== undefined) coinBalance.dailyLimit = data.dailyLimit;
-  if (data.remaining !== undefined) coinBalance.dailyRemaining = data.remaining;
-  updateCoinDisplay();
-}
+        if (contentType.startsWith("image/")) {
+    await renderImageResult(response);
+  } else {
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "Request gagal.");
+    if (activeTool === "pinterest") renderPinterest(data);
+    else if (activeTool === "spotify") renderMusic(data);
+    else if (activeTool === "fpreset") {
+      if (inputMode === "upload") renderFpresetSearch(data);
+      else renderFpreset(data);
+    }
+    else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
+
+    // Kalau react sukses, update coin display
+    if (activeTool === "react" && data.coin !== undefined) {
+      coinBalance.coin = data.coin;
+      if (data.dailyUsed !== undefined) coinBalance.dailyUsed = data.dailyUsed;
+      if (data.dailyLimit !== undefined) coinBalance.dailyLimit = data.dailyLimit;
+      if (data.remaining !== undefined) coinBalance.dailyRemaining = data.remaining;
+      updateCoinDisplay();
+    }
+  }
 } catch (error) {
   showMessage(error.message || "Terjadi kesalahan. Coba lagi nanti.", "error");
   // Kalau react error karena coin habis / limit, refresh balance

@@ -39,14 +39,16 @@ const K = {
 /* ===== Telegram helpers ===== */
 async function tgSend(chatId, text, options = {}) {
   try {
-    await axios.post(`${TG_API}/sendMessage`, {
+    console.log(`[TG] Sending to ${chatId}: ${text.slice(0, 60).replace(/\n/g, " ")}`);
+    const res = await axios.post(`${TG_API}/sendMessage`, {
       chat_id: chatId,
       text,
       parse_mode: "HTML",
       ...options,
     }, { timeout: 10_000 });
+    console.log(`[TG] Sent OK: msg_id=${res.data?.result?.message_id}`);
   } catch (err) {
-    console.error("[TG] sendMessage error:", err.message);
+    console.error("[TG] sendMessage error:", err.response?.data || err.message);
   }
 }
 
@@ -346,15 +348,22 @@ async function cmdHelp(chatId) {
 
 /* ===== Main handler ===== */
 async function handleTelegramUpdate(update) {
-  if (!update?.message?.text) return;
+  console.log("[TG] Handler called:", JSON.stringify(update).slice(0, 200));
+
+  if (!update?.message?.text) {
+    console.log("[TG] No message.text, skip");
+    return;
+  }
   const msg = update.message;
   const chatId = msg.chat.id;
   const fromId = String(msg.from.id);
   const text = msg.text.trim();
 
+  console.log(`[TG] From: ${fromId} | Admin: ${ADMIN_ID} | Text: ${text}`);
+
   // Cek admin
   if (fromId !== ADMIN_ID) {
-    console.log(`[TG] Non-admin attempt: ${fromId}`);
+    console.log(`[TG] Non-admin attempt: ${fromId} (expected ${ADMIN_ID})`);
     return tgSend(chatId, "❌ Akses ditolak. Bot ini khusus admin.");
   }
 

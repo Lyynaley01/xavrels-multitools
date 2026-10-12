@@ -1031,16 +1031,21 @@ app.post("/api/telegram-webhook", async (req, res) => {
       return res.status(403).json({ ok: false });
     }
 
-    // Respond cepat ke Telegram (harus < 5 detik)
-    res.status(200).json({ ok: true });
+    console.log("[TG-WEBHOOK] Update received:", JSON.stringify(req.body).slice(0, 200));
 
-    // Process async
-    handleTelegramUpdate(req.body).catch(err => {
-      console.error("[TG-WEBHOOK] Handler error:", err.message);
-    });
+    // 🔥 AWAIT handler DULU sebelum respond — biar Vercel gak freeze function
+    try {
+      await handleTelegramUpdate(req.body);
+      console.log("[TG-WEBHOOK] Handler done");
+    } catch (handlerErr) {
+      console.error("[TG-WEBHOOK] Handler error:", handlerErr.message);
+    }
+
+    // Baru respond
+    res.status(200).json({ ok: true });
   } catch (err) {
     console.error("❌ [/api/telegram-webhook]", err.message);
-    res.status(200).json({ ok: true }); // selalu 200
+    res.status(200).json({ ok: true });
   }
 });
 
