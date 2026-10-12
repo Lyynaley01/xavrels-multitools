@@ -61,7 +61,7 @@ function esc(str) {
 /* /createcode <code> <coin> <max> */
 async function cmdCreateCode(args, chatId) {
   if (args.length < 3) {
-    return tgSend(chatId, "❌ Format: <code>/createcode KODE coin max</code>\nContoh: <code>/createcode XAVRELS-TOOLS-82KJA 50 10</code>");
+    return await tgSend(chatId, "❌ Format: <code>/createcode KODE coin max</code>\nContoh: <code>/createcode XAVRELS-TOOLS-82KJA 50 10</code>");
   }
   const [rawCode, coinStr, maxStr] = args;
   const code = rawCode.toUpperCase().trim();
@@ -69,19 +69,19 @@ async function cmdCreateCode(args, chatId) {
   const max = parseInt(maxStr, 10);
 
   if (!/^[A-Z0-9\-_]{4,64}$/.test(code)) {
-    return tgSend(chatId, "❌ Kode harus 4-64 karakter, alfanumerik + <code>-</code> + <code>_</code>");
+    return await tgSend(chatId, "❌ Kode harus 4-64 karakter, alfanumerik + <code>-</code> + <code>_</code>");
   }
   if (!Number.isFinite(coin) || coin < 1 || coin > 100000) {
-    return tgSend(chatId, "❌ Coin harus angka 1-100000");
+    return await tgSend(chatId, "❌ Coin harus angka 1-100000");
   }
   if (!Number.isFinite(max) || max < 1 || max > 10000) {
-    return tgSend(chatId, "❌ Max redeem harus angka 1-10000");
+    return await tgSend(chatId, "❌ Max redeem harus angka 1-10000");
   }
 
   const key = K.code(code);
   const existing = await kv.get(key);
   if (existing) {
-    return tgSend(chatId, `❌ Kode <code>${esc(code)}</code> sudah ada. Hapus dulu atau pakai kode lain.`);
+    return await tgSend(chatId, `❌ Kode <code>${esc(code)}</code> sudah ada. Hapus dulu atau pakai kode lain.`);
   }
 
   const payload = {
@@ -99,7 +99,7 @@ async function cmdCreateCode(args, chatId) {
   await kv.set(key, JSON.stringify(payload));
   await kv.sadd(K.allCodes, code);
 
-  tgSend(chatId,
+  await tgSend(chatId,
     `✅ <b>Kode dibuat!</b>\n\n` +
     `🎟️ Kode: <code>${esc(code)}</code>\n` +
     `💰 Coin: <b>${coin}</b>\n` +
@@ -110,21 +110,21 @@ async function cmdCreateCode(args, chatId) {
 
 /* /deletecode <code> */
 async function cmdDeleteCode(args, chatId) {
-  if (args.length < 1) return tgSend(chatId, "❌ Format: <code>/deletecode KODE</code>");
+  if (args.length < 1) return await tgSend(chatId, "❌ Format: <code>/deletecode KODE</code>");
   const code = args[0].toUpperCase().trim();
   const key = K.code(code);
   const existing = await kv.get(key);
-  if (!existing) return tgSend(chatId, `❌ Kode <code>${esc(code)}</code> gak ketemu.`);
+  if (!existing) return await tgSend(chatId, `❌ Kode <code>${esc(code)}</code> gak ketemu.`);
 
   await kv.del(key);
   await kv.srem(K.allCodes, code);
-  tgSend(chatId, `✅ Kode <code>${esc(code)}</code> dihapus.`);
+  await tgSend(chatId, `✅ Kode <code>${esc(code)}</code> dihapus.`);
 }
 
 /* /listcodes */
 async function cmdListCodes(args, chatId) {
   const codes = await kv.smembers(K.allCodes) || [];
-  if (!codes.length) return tgSend(chatId, "📭 Belum ada kode.");
+  if (!codes.length) return await tgSend(chatId, "📭 Belum ada kode.");
 
   const lines = [];
   for (const code of codes.slice(0, 30)) {
@@ -138,13 +138,13 @@ async function cmdListCodes(args, chatId) {
   }
 
   const total = codes.length;
-  tgSend(chatId, `📋 <b>Total Kode: ${total}</b>\n\n${lines.join("\n\n")}${total > 30 ? "\n\n<i>…dan lainnya (limit tampil 30)</i>" : ""}`);
+  await tgSend(chatId, `📋 <b>Total Kode: ${total}</b>\n\n${lines.join("\n\n")}${total > 30 ? "\n\n<i>…dan lainnya (limit tampil 30)</i>" : ""}`);
 }
 
 /* /listuser */
 async function cmdListUser(args, chatId) {
   const ids = await kv.smembers(K.allUsers) || [];
-  if (!ids.length) return tgSend(chatId, "📭 Belum ada user.");
+  if (!ids.length) return await tgSend(chatId, "📭 Belum ada user.");
 
   const lines = [];
   let totalCoin = 0;
@@ -157,7 +157,7 @@ async function cmdListUser(args, chatId) {
     lines.push(`${prem} <code>${esc(id.slice(0, 16))}…</code> · 💰 ${u.coin || 0} · 🎬 ${u.totalReaction || 0}`);
   }
 
-  tgSend(chatId,
+  await tgSend(chatId,
     `👥 <b>Total User: ${ids.length}</b>\n` +
     `💰 <b>Total Coin Beredar: ${totalCoin}</b>\n\n` +
     lines.join("\n") +
@@ -168,7 +168,7 @@ async function cmdListUser(args, chatId) {
 /* /listprem */
 async function cmdListPrem(args, chatId) {
   const ids = await kv.smembers(K.allPrem) || [];
-  if (!ids.length) return tgSend(chatId, "📭 Belum ada user premium.");
+  if (!ids.length) return await tgSend(chatId, "📭 Belum ada user premium.");
 
   const lines = [];
   for (const id of ids.slice(0, 40)) {
@@ -178,7 +178,7 @@ async function cmdListPrem(args, chatId) {
     lines.push(`⭐ <code>${esc(id.slice(0, 16))}…</code> · 💰 ${u.coin || 0}`);
   }
 
-  tgSend(chatId, `⭐ <b>Total Premium: ${ids.length}</b>\n\n${lines.join("\n")}${ids.length > 40 ? `\n\n<i>…dan ${ids.length - 40} user lainnya</i>` : ""}`);
+  await tgSend(chatId, `⭐ <b>Total Premium: ${ids.length}</b>\n\n${lines.join("\n")}${ids.length > 40 ? `\n\n<i>…dan ${ids.length - 40} user lainnya</i>` : ""}`);
 }
 
 /* /stats */
@@ -198,7 +198,7 @@ async function cmdStats(args, chatId) {
     totalCoin += u.coin || 0;
     totalReaction += u.totalReaction || 0;
   }
-  tgSend(chatId,
+  await tgSend(chatId,
     `📊 <b>Statistik Xavrels Coin</b>\n\n` +
     `👥 Total user: <b>${totalUsers}</b>\n` +
     `⭐ Premium: <b>${totalPrem}</b>\n` +
@@ -210,13 +210,13 @@ async function cmdStats(args, chatId) {
 
 /* /userinfo <deviceId> */
 async function cmdUserInfo(args, chatId) {
-  if (args.length < 1) return tgSend(chatId, "❌ Format: <code>/userinfo deviceId</code>");
+  if (args.length < 1) return await tgSend(chatId, "❌ Format: <code>/userinfo deviceId</code>");
   const id = args[0].trim();
   const data = await kv.get(K.user(id));
-  if (!data) return tgSend(chatId, `❌ User <code>${esc(id)}</code> gak ketemu.`);
+  if (!data) return await tgSend(chatId, `❌ User <code>${esc(id)}</code> gak ketemu.`);
   const u = typeof data === "string" ? JSON.parse(data) : data;
 
-  tgSend(chatId,
+  await tgSend(chatId,
     `<b>Info User</b>\n\n` +
     `🆔 <code>${esc(id)}</code>\n` +
     `💰 Coin: <b>${u.coin || 0}</b>\n` +
@@ -229,10 +229,10 @@ async function cmdUserInfo(args, chatId) {
 
 /* /addcoin <deviceId> <amount> */
 async function cmdAddCoin(args, chatId) {
-  if (args.length < 2) return tgSend(chatId, "❌ Format: <code>/addcoin deviceId amount</code>");
+  if (args.length < 2) return await tgSend(chatId, "❌ Format: <code>/addcoin deviceId amount</code>");
   const [id, amountStr] = args;
   const amount = parseInt(amountStr, 10);
-  if (!Number.isFinite(amount) || amount === 0) return tgSend(chatId, "❌ Amount harus angka (bisa negatif buat ngurangin)");
+  if (!Number.isFinite(amount) || amount === 0) return await tgSend(chatId, "❌ Amount harus angka (bisa negatif buat ngurangin)");
 
   const key = K.user(id);
   let data = await kv.get(key);
@@ -246,12 +246,12 @@ async function cmdAddCoin(args, chatId) {
   await kv.set(key, JSON.stringify(u));
   await kv.sadd(K.allUsers, id);
 
-  tgSend(chatId, `✅ Coin user <code>${esc(id.slice(0, 16))}…</code> ${amount >= 0 ? "+" : ""}${amount}\n💰 Saldo baru: <b>${u.coin}</b>`);
+  await tgSend(chatId, `✅ Coin user <code>${esc(id.slice(0, 16))}…</code> ${amount >= 0 ? "+" : ""}${amount}\n💰 Saldo baru: <b>${u.coin}</b>`);
 }
 
 /* /grantpremium <deviceId> [coin] */
 async function cmdGrantPremium(args, chatId) {
-  if (args.length < 1) return tgSend(chatId, "❌ Format: <code>/grantpremium deviceId [coin]</code>");
+  if (args.length < 1) return await tgSend(chatId, "❌ Format: <code>/grantpremium deviceId [coin]</code>");
   const id = args[0];
   const coinAmount = args[1] ? parseInt(args[1], 10) : 0;
 
@@ -273,7 +273,7 @@ async function cmdGrantPremium(args, chatId) {
   await kv.sadd(K.allUsers, id);
   await kv.sadd(K.allPrem, id);
 
-  tgSend(chatId,
+  await tgSend(chatId,
     `⭐ <b>User di-premium-kan!</b>\n\n` +
     `🆔 <code>${esc(id.slice(0, 16))}…</code>\n` +
     `💰 Coin: <b>${u.coin || 0}</b>\n` +
@@ -283,22 +283,22 @@ async function cmdGrantPremium(args, chatId) {
 
 /* /revokepremium <deviceId> */
 async function cmdRevokePremium(args, chatId) {
-  if (args.length < 1) return tgSend(chatId, "❌ Format: <code>/revokepremium deviceId</code>");
+  if (args.length < 1) return await tgSend(chatId, "❌ Format: <code>/revokepremium deviceId</code>");
   const id = args[0];
   const key = K.user(id);
   const data = await kv.get(key);
-  if (!data) return tgSend(chatId, `❌ User gak ketemu.`);
+  if (!data) return await tgSend(chatId, `❌ User gak ketemu.`);
   const u = typeof data === "string" ? JSON.parse(data) : data;
   u.premium = false;
   delete u.premiumSince;
   await kv.set(key, JSON.stringify(u));
   await kv.srem(K.allPrem, id);
-  tgSend(chatId, `✅ Premium user <code>${esc(id.slice(0, 16))}…</code> dicabut.`);
+  await tgSend(chatId, `✅ Premium user <code>${esc(id.slice(0, 16))}…</code> dicabut.`);
 }
 
 /* /ban <deviceId> */
 async function cmdBan(args, chatId) {
-  if (args.length < 1) return tgSend(chatId, "❌ Format: <code>/ban deviceId</code>");
+  if (args.length < 1) return await tgSend(chatId, "❌ Format: <code>/ban deviceId</code>");
   const id = args[0];
   const key = K.user(id);
   let data = await kv.get(key);
@@ -307,25 +307,25 @@ async function cmdBan(args, chatId) {
   u.banned = true;
   await kv.set(key, JSON.stringify(u));
   await kv.sadd(K.allUsers, id);
-  tgSend(chatId, `🚫 User <code>${esc(id.slice(0, 16))}…</code> di-BAN.`);
+  await tgSend(chatId, `🚫 User <code>${esc(id.slice(0, 16))}…</code> di-BAN.`);
 }
 
 /* /unban <deviceId> */
 async function cmdUnban(args, chatId) {
-  if (args.length < 1) return tgSend(chatId, "❌ Format: <code>/unban deviceId</code>");
+  if (args.length < 1) return await tgSend(chatId, "❌ Format: <code>/unban deviceId</code>");
   const id = args[0];
   const key = K.user(id);
   const data = await kv.get(key);
-  if (!data) return tgSend(chatId, `❌ User gak ketemu.`);
+  if (!data) return await tgSend(chatId, `❌ User gak ketemu.`);
   const u = typeof data === "string" ? JSON.parse(data) : data;
   u.banned = false;
   await kv.set(key, JSON.stringify(u));
-  tgSend(chatId, `✅ User <code>${esc(id.slice(0, 16))}…</code> di-UNBAN.`);
+  await tgSend(chatId, `✅ User <code>${esc(id.slice(0, 16))}…</code> di-UNBAN.`);
 }
 
 /* /help */
 async function cmdHelp(chatId) {
-  tgSend(chatId,
+  await tgSend(chatId,
     `<b>🤖 XAVRELS BOT COMMAND LIST</b>\n\n` +
     `<b>Code Management:</b>\n` +
     `/createcode &lt;code&gt; &lt;coin&gt; &lt;max&gt;\n` +
@@ -364,7 +364,7 @@ async function handleTelegramUpdate(update) {
   // Cek admin
   if (fromId !== ADMIN_ID) {
     console.log(`[TG] Non-admin attempt: ${fromId} (expected ${ADMIN_ID})`);
-    return tgSend(chatId, "❌ Akses ditolak. Bot ini khusus admin.");
+    return await tgSend(chatId, "❌ Akses ditolak. Bot ini khusus admin.");
   }
 
   // Parse command
@@ -376,38 +376,38 @@ async function handleTelegramUpdate(update) {
     switch (command) {
       case "/start":
       case "/help":
-        return cmdHelp(chatId);
+        return await cmdHelp(chatId);
       case "/createcode":
-        return cmdCreateCode(args, chatId);
+        return await cmdCreateCode(args, chatId);
       case "/deletecode":
-        return cmdDeleteCode(args, chatId);
+        return await cmdDeleteCode(args, chatId);
       case "/listcodes":
-        return cmdListCodes(args, chatId);
+        return await cmdListCodes(args, chatId);
       case "/listuser":
-        return cmdListUser(args, chatId);
+        return await cmdListUser(args, chatId);
       case "/listprem":
-        return cmdListPrem(args, chatId);
+        return await cmdListPrem(args, chatId);
       case "/stats":
-        return cmdStats(args, chatId);
+        return await cmdStats(args, chatId);
       case "/userinfo":
-        return cmdUserInfo(args, chatId);
+        return await cmdUserInfo(args, chatId);
       case "/addcoin":
-        return cmdAddCoin(args, chatId);
+        return await cmdAddCoin(args, chatId);
       case "/grantpremium":
-        return cmdGrantPremium(args, chatId);
+        return await cmdGrantPremium(args, chatId);
       case "/revokepremium":
-        return cmdRevokePremium(args, chatId);
+        return await cmdRevokePremium(args, chatId);
       case "/ban":
-        return cmdBan(args, chatId);
+        return await cmdBan(args, chatId);
       case "/unban":
-        return cmdUnban(args, chatId);
+        return await cmdUnban(args, chatId);
       default:
         // abaikan command gak dikenal
         return;
     }
   } catch (err) {
     console.error("[TG] Command error:", err.message);
-    tgSend(chatId, `❌ Error: ${esc(err.message).slice(0, 200)}`);
+    await tgSend(chatId, `❌ Error: ${esc(err.message).slice(0, 200)}`);
   }
 }
 
