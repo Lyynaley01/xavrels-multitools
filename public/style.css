@@ -4259,3 +4259,387 @@ footer>span:nth-child(2){order:3;width:100%}
 }
 .art-faceswap { background-color: #1f2937; }
 .art-faceswap > span { color: #fff; -webkit-text-stroke: 1.5px var(--ink); font-size: 40px; }
+/* =========================================================
+   REACT TOOL — Coin UI
+   ========================================================= */
+.react-coin-ui { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Coin Bar ── */
+.react-coin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffefb8 100%);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.react-coin-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.react-coin-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.15));
+}
+.react-coin-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.react-coin-meta strong {
+  font-family: "Bangers", cursive;
+  font-size: 26px;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+.react-coin-meta span {
+  font-size: 10px;
+  color: #7a6a2f;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+.react-redeem-btn {
+  padding: 10px 14px;
+  background: var(--red);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.react-redeem-btn:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--ink); }
+.react-redeem-btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+
+/* ── Limit Bar ── */
+.react-limit-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f7f8fb;
+  border: 1.5px solid #cfd2d9;
+  border-radius: 10px;
+}
+.react-limit-label {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.react-limit-progress {
+  flex: 1;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+.react-limit-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2cb67d, #1a8c5e);
+  border-radius: 999px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.react-limit-fill.is-full {
+  background: linear-gradient(90deg, #e63946, #c4001f);
+}
+.react-limit-count {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Field Groups ── */
+.react-field-group { display: flex; flex-direction: column; gap: 6px; }
+.react-field-group label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: var(--ink);
+}
+.react-input {
+  display: block;
+  width: 100%;
+  padding: 13px 13px;
+  border: 1.5px solid #cfd2d9;
+  background: #fffdf9;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  outline: 0;
+  border-radius: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.react-input:focus {
+  border-color: var(--blue);
+  box-shadow: 3px 3px 0 #1769aa28;
+}
+.react-input::placeholder { color: #a0a5b0; }
+
+/* ── Emoji Quick Pick ── */
+.react-emoji-quick {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.react-emoji-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1.5px solid #cfd2d9;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.react-emoji-btn:hover {
+  border-color: var(--ink);
+  background: var(--yellow);
+  transform: translateY(-2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.react-emoji-btn:active { transform: translateY(0); }
+
+/* ── Send Button ── */
+.react-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #e63946, #ff6b7a);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+.react-send-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+.react-send-btn:hover:not(:disabled)::before { transform: translateX(100%); }
+.react-send-btn:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--ink); }
+.react-send-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink); }
+.react-send-btn:disabled { cursor: wait; opacity: 0.65; }
+.react-send-icon { font-size: 20px; line-height: 1; }
+.react-send-text { flex: 1; text-align: center; }
+.react-send-arrow { font-size: 16px; }
+
+.react-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   REDEEM MODAL
+   ========================================================= */
+.redeem-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 12, 22, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: redeemFadeIn 0.24s ease both;
+}
+@keyframes redeemFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes redeemFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+.redeem-modal {
+  width: min(100%, 400px);
+  background: var(--cream);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 8px 8px 0 var(--ink);
+  overflow: hidden;
+  position: relative;
+  animation: redeemPopIn 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes redeemPopIn {
+  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+  60% { opacity: 1; transform: scale(1.02) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes redeemPopOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.95) translateY(10px); }
+}
+
+.redeem-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.redeem-close:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.redeem-header {
+  padding: 26px 20px 16px;
+  text-align: center;
+  background: linear-gradient(135deg, #fff8e1 0%, #ffefb8 100%);
+  border-bottom: 1.5px solid var(--ink);
+}
+.redeem-icon { font-size: 42px; display: block; margin-bottom: 6px; }
+.redeem-header h3 {
+  font-family: "Bangers", cursive;
+  font-size: 26px;
+  letter-spacing: 1.2px;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+.redeem-header p {
+  font-size: 11px;
+  color: #7a6a2f;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.4px;
+}
+
+.redeem-body { padding: 18px 20px 0; }
+.redeem-body label {
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+.redeem-input {
+  display: block;
+  width: 100%;
+  padding: 14px 14px;
+  background: #fffdf9;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-family: "DM Sans", monospace;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink);
+  outline: none;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: all 0.2s;
+}
+.redeem-input:focus {
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--blue);
+  border-color: var(--blue);
+}
+.redeem-input::placeholder {
+  color: #a0a5b0;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.redeem-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff0f0;
+  border: 1.5px solid #e9a7ad;
+  border-radius: 8px;
+  font-size: 11px;
+  color: #982332;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.redeem-error[hidden] { display: none; }
+
+.redeem-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 20px 0;
+  padding: 15px 18px;
+  background: var(--red);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  width: calc(100% - 40px);
+  -webkit-tap-highlight-color: transparent;
+}
+.redeem-submit:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+.redeem-submit:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ink); }
+.redeem-submit:disabled { opacity: 0.7; cursor: wait; }
+
+.redeem-hint {
+  margin: 16px 20px 20px;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+}

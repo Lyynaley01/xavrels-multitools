@@ -86,6 +86,23 @@ const previewName = $("#previewName");
 const previewSize = $("#previewSize");
 const clearFile = $("#clearFile");
 
+/* ===== Coin & Device ID ===== */
+const DEVICE_ID_KEY = "xavrels_device_id";
+let deviceId = null;
+let coinBalance = { coin: 0, premium: false, dailyUsed: 0, dailyLimit: 10, dailyRemaining: 10 };
+
+function getOrCreateDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    // Generate UUID v4
+    id = "dev_" + crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+deviceId = getOrCreateDeviceId();
+console.log("[COIN] Device ID:", deviceId);
+
 let originalFormHTML = null;  // ← TAMBAH INI
 let activeTool = null;
 let telegramUrl = "https://t.me/";
@@ -2768,6 +2785,38 @@ if (key === "faceswap") {
 // ═══════════════════════════════════════════════
 // GENERIC TOOL (HD, Remove BG, React, Pinterest, Spotify, Fpreset)
 // ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// SPECIAL TOOL: WA CHANNEL REACT (dengan Coin UI)
+// ═══════════════════════════════════════════════
+if (key === "react") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+
+  const reactTitleEl = $("#workspaceTitle");
+  reactTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  reactTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  renderReactTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
+
 restoreOriginalForm();  // ← TAMBAH INI
 
 // Re-attach event listeners karena DOM baru di-restore
@@ -3036,7 +3085,10 @@ if (form) {
         payload = { url: value };
       }
 
-      if (activeTool === "react" && extraEl) payload.emoji = extraEl.value.trim();
+      if (activeTool === "react") {
+  payload.emoji = extraEl.value.trim();
+  payload.deviceId = deviceId;  // ← KIRIM DEVICE ID
+}
 
       fetchOptions = {
         method: "POST",
@@ -3090,9 +3142,21 @@ if (form) {
         }
         else showMessage(data.message || "Permintaan reaksi berhasil dikirim ke provider.");
       }
-    } catch (error) {
-      showMessage(error.message || "Terjadi kesalahan. Coba lagi nanti.", "error");
-    } finally {
+      // Kalau react sukses, update coin display
+if (activeTool === "react" && data.coin !== undefined) {
+  coinBalance.coin = data.coin;
+  if (data.dailyUsed !== undefined) coinBalance.dailyUsed = data.dailyUsed;
+  if (data.dailyLimit !== undefined) coinBalance.dailyLimit = data.dailyLimit;
+  if (data.remaining !== undefined) coinBalance.dailyRemaining = data.remaining;
+  updateCoinDisplay();
+}
+} catch (error) {
+  showMessage(error.message || "Terjadi kesalahan. Coba lagi nanti.", "error");
+  // Kalau react error karena coin habis / limit, refresh balance
+  if (activeTool === "react") {
+    refreshCoinBalance().catch(() => {});
+  }
+}finally {
       if (submitEl) submitEl.disabled = false;
       if (submitLabelEl) submitLabelEl.textContent = info.button;
     }
@@ -4306,6 +4370,443 @@ async function runFaceswapGenerate(btnEl) {
       `;
     }
   }
+}
+
+/* =========================================================
+   WA CHANNEL REACT — Custom Tool UI (dengan Coin)
+   ========================================================= */
+function renderReactTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const wrap = document.createElement("div");
+  wrap.className = "react-coin-ui";
+
+  // ── Coin Bar ──
+  const coinBar = document.createElement("div");
+  coinBar.className = "react-coin-bar";
+  coinBar.innerHTML = `
+    <div class="react-coin-info">
+      <span class="react-coin-icon">🪙</span>
+      <div class="react-coin-meta">
+        <strong id="reactCoinBalance">0</strong>
+        <span id="reactCoinStatus">Loading...</span>
+      </div>
+    </div>
+    <div class="react-coin-actions">
+      <button type="button" class="react-redeem-btn" id="reactRedeemBtn">
+        🎁 REDEEM
+      </button>
+    </div>
+  `;
+  wrap.append(coinBar);
+
+  // ── Limit bar ──
+  const limitBar = document.createElement("div");
+  limitBar.className = "react-limit-bar";
+  limitBar.id = "reactLimitBar";
+  limitBar.innerHTML = `
+    <span class="react-limit-label">Limit harian</span>
+    <div class="react-limit-progress">
+      <div class="react-limit-fill" id="reactLimitFill"></div>
+    </div>
+    <span class="react-limit-count" id="reactLimitCount">0/10</span>
+  `;
+  wrap.append(limitBar);
+
+  // ── Field URL ──
+  const urlGroup = document.createElement("div");
+  urlGroup.className = "react-field-group";
+  urlGroup.innerHTML = `<label>Link Postingan Channel WhatsApp</label>`;
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.className = "react-input";
+  urlInput.id = "reactChannelUrl";
+  urlInput.placeholder = "https://whatsapp.com/channel/...";
+  urlInput.autocomplete = "url";
+  urlGroup.append(urlInput);
+  wrap.append(urlGroup);
+
+  // ── Field Emoji ──
+  const emojiGroup = document.createElement("div");
+  emojiGroup.className = "react-field-group";
+  emojiGroup.innerHTML = `<label>Emoji Reaksi</label>`;
+  const emojiInput = document.createElement("input");
+  emojiInput.type = "text";
+  emojiInput.className = "react-input";
+  emojiInput.id = "reactEmojiInput";
+  emojiInput.placeholder = "❤️, 🔥, 😂";
+  emojiInput.maxLength = 60;
+  emojiGroup.append(emojiInput);
+  wrap.append(emojiGroup);
+
+  // ── Quick emoji picks ──
+  const emojiQuick = document.createElement("div");
+  emojiQuick.className = "react-emoji-quick";
+  const quickEmojis = ["❤️", "🔥", "😂", "👍", "😮", "😢"];
+  quickEmojis.forEach(em => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "react-emoji-btn";
+    btn.textContent = em;
+    btn.addEventListener("click", () => {
+      emojiInput.value = em;
+      emojiInput.focus();
+    });
+    emojiQuick.append(btn);
+  });
+  wrap.append(emojiQuick);
+
+  // ── Tombol Kirim ──
+  const sendBtn = document.createElement("button");
+  sendBtn.type = "button";
+  sendBtn.className = "react-send-btn";
+  sendBtn.id = "reactSendBtn";
+  sendBtn.innerHTML = `
+    <span class="react-send-icon">⚡</span>
+    <span class="react-send-text">KIRIM REAKSI (1 🪙)</span>
+    <span class="react-send-arrow">↗</span>
+  `;
+  sendBtn.addEventListener("click", () => runReactSend(sendBtn));
+  wrap.append(sendBtn);
+
+  // ── Hint ──
+  const hint = document.createElement("p");
+  hint.className = "react-hint";
+  hint.textContent = "💡 1 reaction = 1 coin. Limit harian reset 24 jam setelah reaction pertama.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // ── Attach event handlers ──
+  document.getElementById("reactRedeemBtn")?.addEventListener("click", openRedeemModal);
+
+  // ── Auto refresh balance ──
+  refreshCoinBalance().catch(() => {});
+
+  // Auto-focus URL
+  setTimeout(() => urlInput.focus({ preventScroll: true }), 200);
+
+  // Enter key submit
+  [urlInput, emojiInput].forEach(inp => {
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+  });
+}
+
+/* ===== Refresh coin balance dari server ===== */
+async function refreshCoinBalance() {
+  try {
+    const token = await ensureSession();
+    const res = await fetch("/api/coin/balance", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify({ deviceId }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.ok) return;
+
+    coinBalance = {
+      coin: data.coin || 0,
+      premium: data.premium || false,
+      dailyUsed: data.dailyUsed || 0,
+      dailyLimit: data.dailyLimit || 10,
+      dailyRemaining: data.dailyRemaining || 0,
+    };
+    updateCoinDisplay();
+  } catch (err) {
+    console.error("[COIN] refresh error:", err.message);
+  }
+}
+
+/* ===== Update UI coin ===== */
+function updateCoinDisplay() {
+  const balEl = document.getElementById("reactCoinBalance");
+  const statEl = document.getElementById("reactCoinStatus");
+  const fillEl = document.getElementById("reactLimitFill");
+  const countEl = document.getElementById("reactLimitCount");
+  const sendText = document.querySelector(".react-send-text");
+
+  if (balEl) balEl.textContent = String(coinBalance.coin);
+  if (statEl) {
+    statEl.textContent = coinBalance.premium
+      ? `⭐ PREMIUM · Limit ${coinBalance.dailyLimit}/hari`
+      : `Limit ${coinBalance.dailyLimit}/hari`;
+  }
+
+  if (fillEl && countEl) {
+    const pct = Math.min(100, (coinBalance.dailyUsed / coinBalance.dailyLimit) * 100);
+    fillEl.style.width = `${pct}%`;
+    countEl.textContent = `${coinBalance.dailyUsed}/${coinBalance.dailyLimit}`;
+    fillEl.classList.toggle("is-full", pct >= 100);
+  }
+
+  if (sendText) {
+    if (coinBalance.coin < 1) {
+      sendText.textContent = "COIN HABIS — REDEEM DULU";
+    } else if (coinBalance.dailyRemaining <= 0) {
+      sendText.textContent = "LIMIT HARIAN HABIS";
+    } else {
+      sendText.textContent = "KIRIM REAKSI (1 🪙)";
+    }
+  }
+}
+
+/* ===== Kirim reaction ===== */
+async function runReactSend(btnEl) {
+  const url = document.getElementById("reactChannelUrl")?.value?.trim() || "";
+  const emoji = document.getElementById("reactEmojiInput")?.value?.trim() || "";
+
+  if (!url) {
+    showMessage("Isi link postingan channel WhatsApp.", "error");
+    return;
+  }
+  if (!emoji) {
+    showMessage("Pilih emoji reaksi.", "error");
+    return;
+  }
+  if (coinBalance.coin < 1) {
+    showMessage("Coin habis. Redeem code dulu.", "error");
+    return;
+  }
+  if (coinBalance.dailyRemaining <= 0) {
+    showMessage("Limit harian habis. Tunggu reset 24 jam.", "error");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="react-send-icon">⏳</span>
+      <span class="react-send-text">MENGIRIM...</span>
+      <span class="react-send-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang mengirim reaksi...", "loading");
+
+  try {
+    const token = await ensureSession();
+    let res = await fetch("/api/react", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify({ deviceId, url, emoji }),
+    });
+
+    if (res.status === 401) {
+      sessionToken = null; sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      res = await fetch("/api/react", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh,
+        },
+        body: JSON.stringify({ deviceId, url, emoji }),
+      });
+    }
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      // Kalau coin habis / limit habis, update display
+      if (data.code === "NO_COIN" || data.code === "DAILY_LIMIT") {
+        await refreshCoinBalance();
+      }
+      throw new Error(data.error || `Request gagal (HTTP ${res.status}).`);
+    }
+
+    // Update coin balance
+    if (data.coin !== undefined) coinBalance.coin = data.coin;
+    if (data.dailyUsed !== undefined) coinBalance.dailyUsed = data.dailyUsed;
+    if (data.dailyLimit !== undefined) coinBalance.dailyLimit = data.dailyLimit;
+    if (data.remaining !== undefined) coinBalance.dailyRemaining = data.remaining;
+    updateCoinDisplay();
+
+    // Success message
+    resultShell.hidden = false;
+    resultArea.replaceChildren();
+    const successCard = document.createElement("div");
+    successCard.className = "result-msg";
+    successCard.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <strong style="color:#2cb67d;">✅ Reaksi berhasil dikirim!</strong>
+        <span>🪙 Sisa coin: <b>${coinBalance.coin}</b></span>
+        <span>📊 Hari ini: <b>${coinBalance.dailyUsed}/${coinBalance.dailyLimit}</b></span>
+      </div>
+    `;
+    resultArea.append(successCard);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = "Reaksi terkirim";
+
+  } catch (err) {
+    console.error("[REACT] Error:", err.message);
+    showMessage(err.message || "Gagal kirim reaksi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="react-send-icon">⚡</span>
+        <span class="react-send-text">KIRIM REAKSI (1 🪙)</span>
+        <span class="react-send-arrow">↗</span>
+      `;
+      updateCoinDisplay();
+    }
+  }
+}
+
+/* =========================================================
+   REDEEM MODAL
+   ========================================================= */
+function openRedeemModal() {
+  const old = document.getElementById("redeemModal");
+  if (old) old.remove();
+
+  const modal = document.createElement("div");
+  modal.className = "redeem-modal-backdrop";
+  modal.id = "redeemModal";
+
+  modal.innerHTML = `
+    <div class="redeem-modal">
+      <button class="redeem-close" aria-label="Tutup">✕</button>
+      <div class="redeem-header">
+        <span class="redeem-icon">🎁</span>
+        <h3>REDEEM CODE</h3>
+        <p>Tukar code jadi coin</p>
+      </div>
+      <div class="redeem-body">
+        <label for="redeemInput">Masukkan code</label>
+        <input
+          type="text"
+          class="redeem-input"
+          id="redeemInput"
+          placeholder="XAVRELS-TOOLS-XXXXX"
+          maxlength="64"
+          autocapitalize="characters"
+          autocomplete="off"
+        >
+        <div class="redeem-error" id="redeemError" hidden></div>
+      </div>
+      <button type="button" class="redeem-submit" id="redeemSubmit">
+        <span>REDEEM SEKARANG</span>
+        <span>↗</span>
+      </button>
+      <p class="redeem-hint">ℹ️ Setiap code punya batas pemakaian. Cek dulu sebelum share.</p>
+    </div>
+  `;
+
+  document.body.append(modal);
+  document.body.style.overflow = "hidden";
+
+  const input = modal.querySelector("#redeemInput");
+  const submitBtn = modal.querySelector("#redeemSubmit");
+  const errorEl = modal.querySelector("#redeemError");
+
+  function close() {
+    document.body.style.overflow = "";
+    modal.style.animation = "redeemFadeOut 0.2s ease forwards";
+    const card = modal.querySelector(".redeem-modal");
+    if (card) card.style.animation = "redeemPopOut 0.2s ease forwards";
+    setTimeout(() => modal.remove(), 200);
+  }
+
+  modal.querySelector(".redeem-close").addEventListener("click", close);
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  document.addEventListener("keydown", function escHandler(e) {
+    if (e.key === "Escape") { close(); document.removeEventListener("keydown", escHandler); }
+  });
+
+  async function doRedeem() {
+    const code = input.value.trim().toUpperCase();
+    if (!code || code.length < 4) {
+      errorEl.hidden = false;
+      errorEl.textContent = "Masukkan code minimal 4 karakter.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span>⏳ MEMPROSES...</span>`;
+    errorEl.hidden = true;
+
+    try {
+      const token = await ensureSession();
+      let res = await fetch("/api/redeem", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": token,
+        },
+        body: JSON.stringify({ deviceId, code }),
+      });
+
+      if (res.status === 401) {
+        sessionToken = null; sessionExpiresAt = 0;
+        const fresh = await ensureSession();
+        res = await fetch("/api/redeem", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Session-Token": fresh,
+          },
+          body: JSON.stringify({ deviceId, code }),
+        });
+      }
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Gagal redeem code.");
+      }
+
+      // Success
+      submitBtn.innerHTML = `<span>✅ BERHASIL!</span>`;
+      submitBtn.style.background = "#2cb67d";
+
+      // Update balance
+      if (data.coin !== undefined) {
+        coinBalance.coin = data.coin;
+        updateCoinDisplay();
+      }
+
+      // Show success then close
+      setTimeout(() => {
+        close();
+        showMessage(
+          `🎉 Berhasil redeem <b>${data.addedCoin}</b> coin!<br>Sisa coin kamu: <b>${data.coin}</b>`,
+          "success"
+        );
+      }, 900);
+
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span>REDEEM SEKARANG</span><span>↗</span>`;
+      errorEl.hidden = false;
+      errorEl.textContent = err.message || "Gagal redeem.";
+    }
+  }
+
+  submitBtn.addEventListener("click", doRedeem);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); doRedeem(); }
+  });
+
+  setTimeout(() => input.focus({ preventScroll: true }), 200);
 }
 
 /* =========================================================

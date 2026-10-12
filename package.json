@@ -12,6 +12,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@vercel/kv": "^2.0.0",
     "axios": "^1.7.9",
     "express": "^4.22.3",
     "express-rate-limit": "^7.5.0",

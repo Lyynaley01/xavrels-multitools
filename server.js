@@ -6,6 +6,8 @@ const multer = require("multer");
 const FormData = require("form-data");
 const crypto = require("crypto");
 const path = require("path");
+const { kv } = require("@vercel/kv");
+const { handleTelegramUpdate } = require("./telegram-bot");
 
 const app = express();
 app.disable("x-powered-by");
@@ -328,6 +330,96 @@ function validatePublicHttpsUrl(raw) {
     throw new Error("URL menuju host privat/lokal tidak diizinkan.");
   }
   return u.toString();
+}
+
+/* ============================================================
+   KV HELPERS — User & Coin
+   ============================================================ */
+const KV = {
+  user: (id) => `user:${id}`,
+  allUsers: "users:all",
+  allPrem: "users:premium",
+  code: (c) => `code:${c.toUpperCase()}`,
+  allCodes: "codes:all",
+  failedRedeem: (id) => `failed:${id}`,
+  dailyReact: (id) => `daily:${id}`,
+};
+
+async function kvGetUser(deviceId) {
+  const raw = await kv.get(KV.user(deviceId));
+  if (!raw) return null;
+  return typeof raw === "string" ? JSON.parse(raw) : raw;
+}
+
+async function kvSetUser(deviceId, userObj) {
+  await kv.set(KV.user(deviceId), JSON.stringify(userObj));
+  await kv.sadd(KV.allUsers, deviceId);
+  if (userObj.premium) await kv.sadd(KV.allPrem, deviceId);
+  else await kv.srem(KV.allPrem, deviceId);
+}
+
+async function kvGetOrCreateUser(deviceId) {
+  let u = await kvGetUser(deviceId);
+  if (!u) {
+    u = {
+      deviceId,
+      coin: 0,
+      premium: false,
+      banned: false,
+      totalReaction: 0,
+      totalRedeemed: 0,
+      createdAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString(),
+    };
+    await kvSetUser(deviceId, u);
+  }
+  return u;
+}
+
+function validateDeviceId(raw) {
+  const id = String(raw || "").trim();
+  if (!/^[a-zA-Z0-9\-_]{8,64}$/.test(id)) {
+    throw new Error("Device ID tidak valid.");
+  }
+  return id;
+}
+
+/* Cek limit reaction harian user (24 jam rolling) */
+async function checkAndUpdateDailyLimit(deviceId, isPremium) {
+  const key = KV.dailyReact(deviceId);
+  const now = Date.now();
+  const WINDOW_MS = 24 * 60 * 60 * 1000;
+  const limit = isPremium ? 50 : 10;
+
+  let data = await kv.get(key);
+  let d = data ? (typeof data === "string" ? JSON.parse(data) : data) : null;
+
+  if (!d || (now - d.windowStart) >= WINDOW_MS) {
+    // Reset window
+    d = { windowStart: now, count: 0 };
+  }
+
+  if (d.count >= limit) {
+    const resetAt = d.windowStart + WINDOW_MS;
+    return {
+      ok: false,
+      limit,
+      used: d.count,
+      resetAt,
+      message: `Limit harian habis (${d.count}/${limit}). Reset dalam ${Math.ceil((resetAt - now) / 1000 / 60)} menit.`
+    };
+  }
+
+  d.count++;
+  await kv.set(key, JSON.stringify(d), { ex: Math.ceil(WINDOW_MS / 1000) + 60 });
+
+  return {
+    ok: true,
+    limit,
+    used: d.count,
+    remaining: limit - d.count,
+    resetAt: d.windowStart + WINDOW_MS,
+  };
 }
 
 function sendError(res, err) {
@@ -672,10 +764,13 @@ app.post("/api/spotify", requireAuth, async (req, res) => {
 
 
 /* ============================================================
-   /api/react
+   /api/react — WA Channel React (dengan sistem COIN)
    ============================================================ */
+const REACT_COST = 1; // 1 coin per reaction
+
 app.post("/api/react", requireAuth, async (req, res) => {
   try {
+    const deviceId = validateDeviceId(req.body?.deviceId);
     const url = validatePublicHttpsUrl(safeText(req.body?.url, 1000));
     const emoji = safeText(req.body?.emoji, 80);
 
@@ -686,6 +781,45 @@ app.post("/api/react", requireAuth, async (req, res) => {
       throw new Error("Isi emoji reaksi, contoh ❤️,🔥,😂.");
     }
 
+    // ── Cek user di KV ──
+    const user = await kvGetOrCreateUser(deviceId);
+
+    if (user.banned) {
+      return res.status(403).json({ ok: false, error: "Akun kamu diblokir dari tool ini." });
+    }
+
+    // ── Cek limit harian ──
+    const limitCheck = await checkAndUpdateDailyLimit(deviceId, user.premium);
+    if (!limitCheck.ok) {
+      return res.status(429).json({
+        ok: false,
+        error: limitCheck.message,
+        code: "DAILY_LIMIT",
+        limit: limitCheck.limit,
+        used: limitCheck.used,
+        resetAt: limitCheck.resetAt,
+      });
+    }
+
+    // ── Cek coin cukup ──
+    if ((user.coin || 0) < REACT_COST) {
+      // Rollback daily limit count kalau coin gak cukup
+      const key = KV.dailyReact(deviceId);
+      const dRaw = await kv.get(key);
+      if (dRaw) {
+        const d = typeof dRaw === "string" ? JSON.parse(dRaw) : dRaw;
+        d.count = Math.max(0, (d.count || 1) - 1);
+        await kv.set(key, JSON.stringify(d), { ex: Math.ceil(24 * 60 * 60) + 60 });
+      }
+      return res.status(402).json({
+        ok: false,
+        error: "Coin kamu habis. Redeem code dulu buat dapet coin.",
+        code: "NO_COIN",
+        coin: user.coin || 0,
+      });
+    }
+
+    // ── Kirim ke provider ──
     const apiKey = requireSecret("REACT_API_KEY");
     const response = await http.get(
       "https://auto-reaction.zxcoderid.web.id/api/vip/open-api/react",
@@ -698,20 +832,237 @@ app.post("/api/react", requireAuth, async (req, res) => {
 
     const d = response.data;
     if (!d?.success) {
+      // Rollback daily limit karena gagal
+      const key = KV.dailyReact(deviceId);
+      const dRaw = await kv.get(key);
+      if (dRaw) {
+        const dd = typeof dRaw === "string" ? JSON.parse(dRaw) : dRaw;
+        dd.count = Math.max(0, (dd.count || 1) - 1);
+        await kv.set(key, JSON.stringify(dd), { ex: Math.ceil(24 * 60 * 60) + 60 });
+      }
       const detail = safeText(d?.error?.message || d?.message || "Provider menolak permintaan.", 180);
       throw new Error(detail);
     }
 
+    // ── Sukses: potong coin ──
+    user.coin = Math.max(0, (user.coin || 0) - REACT_COST);
+    user.totalReaction = (user.totalReaction || 0) + 1;
+    user.lastSeenAt = new Date().toISOString();
+    await kvSetUser(deviceId, user);
+
     res.json({
       ok: true,
-      message: "Permintaan reaksi dikirim ke provider.",
-      result: d?.message ? safeText(d.message, 160) : "Selesai"
+      message: "Reaksi berhasil dikirim!",
+      result: d?.message ? safeText(d.message, 160) : "Selesai",
+      coin: user.coin,
+      dailyUsed: limitCheck.used,
+      dailyLimit: limitCheck.limit,
+      remaining: limitCheck.remaining,
     });
   } catch (err) {
     console.error("❌ [/api/react]", err.message);
     sendError(res, err);
   }
 });
+
+/* ============================================================
+   /api/coin/balance — Cek saldo coin user
+   ============================================================ */
+app.post("/api/coin/balance", requireAuth, async (req, res) => {
+  try {
+    const deviceId = validateDeviceId(req.body?.deviceId);
+
+    // Rate limit 30/menit per deviceId
+    const limit = checkEndpointLimit(deviceId, "coin-balance", 30);
+    if (!limit.ok) {
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    const user = await kvGetOrCreateUser(deviceId);
+    user.lastSeenAt = new Date().toISOString();
+    await kvSetUser(deviceId, user);
+
+    // Hitung daily usage
+    const dailyRaw = await kv.get(KV.dailyReact(deviceId));
+    let dailyUsed = 0;
+    if (dailyRaw) {
+      const d = typeof dailyRaw === "string" ? JSON.parse(dailyRaw) : dailyRaw;
+      const WINDOW_MS = 24 * 60 * 60 * 1000;
+      if (Date.now() - d.windowStart < WINDOW_MS) {
+        dailyUsed = d.count || 0;
+      }
+    }
+
+    const dailyLimit = user.premium ? 50 : 10;
+
+    res.json({
+      ok: true,
+      coin: user.coin || 0,
+      premium: user.premium || false,
+      banned: user.banned || false,
+      dailyUsed,
+      dailyLimit,
+      dailyRemaining: Math.max(0, dailyLimit - dailyUsed),
+      totalReaction: user.totalReaction || 0,
+    });
+  } catch (err) {
+    console.error("❌ [/api/coin/balance]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/redeem — Tukar code jadi coin
+   ============================================================ */
+app.post("/api/redeem", requireAuth, async (req, res) => {
+  try {
+    const deviceId = validateDeviceId(req.body?.deviceId);
+    const rawCode = safeText(req.body?.code, 64).toUpperCase().trim();
+
+    if (!rawCode || rawCode.length < 4) {
+      throw new Error("Format code tidak valid.");
+    }
+
+    // Rate limit 3/menit per deviceId
+    const rl = checkEndpointLimit(deviceId, "redeem", 3);
+    if (!rl.ok) {
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu 1 menit." });
+    }
+
+    const user = await kvGetOrCreateUser(deviceId);
+    if (user.banned) {
+      return res.status(403).json({ ok: false, error: "Akun kamu diblokir dari redeem." });
+    }
+
+    // Cek failed attempts
+    const failKey = KV.failedRedeem(deviceId);
+    const failRaw = await kv.get(failKey);
+    let failData = failRaw ? (typeof failRaw === "string" ? JSON.parse(failRaw) : failRaw) : { count: 0, blockedUntil: 0 };
+
+    if (failData.blockedUntil && Date.now() < failData.blockedUntil) {
+      const remainingMin = Math.ceil((failData.blockedUntil - Date.now()) / 1000 / 60);
+      return res.status(429).json({ ok: false, error: `Kamu diblokir sementara. Coba lagi dalam ${remainingMin} menit.` });
+    }
+
+    // Cari code
+    const codeKey = KV.code(rawCode);
+    const codeRaw = await kv.get(codeKey);
+
+    if (!codeRaw) {
+      // Gagal — increment counter
+      failData.count = (failData.count || 0) + 1;
+      if (failData.count >= 20) {
+        failData.blockedUntil = Date.now() + (24 * 60 * 60 * 1000); // block 24 jam
+      } else if (failData.count >= 5) {
+        failData.blockedUntil = Date.now() + (60 * 60 * 1000); // block 1 jam
+      }
+      await kv.set(failKey, JSON.stringify(failData), { ex: 86400 * 2 });
+
+      // Notifikasi admin kalau 5x
+      if (failData.count === 5 || failData.count === 20) {
+        tgNotifyAdmin(
+          `🚨 <b>ALERT: Brute-force redeem!</b>\n\n` +
+          `🆔 DeviceId: <code>${escHtml(deviceId.slice(0, 20))}…</code>\n` +
+          `🌐 IP: ${escHtml(req.ip || "-")}\n` +
+          `📊 Total gagal: ${failData.count}x\n` +
+          `❌ Code terakhir: <code>${escHtml(rawCode)}</code>\n` +
+          `🚫 Action: ${failData.count >= 20 ? "Block 24 jam" : "Block 1 jam"}`
+        ).catch(() => {});
+      }
+
+      throw new Error("Code tidak ditemukan atau sudah tidak aktif.");
+    }
+
+    const c = typeof codeRaw === "string" ? JSON.parse(codeRaw) : codeRaw;
+
+    if (!c.active) throw new Error("Code ini sudah tidak aktif.");
+    if (c.redeemedCount >= c.maxRedeem) throw new Error("Code sudah habis dipakai.");
+    if (c.redeemedBy && c.redeemedBy.includes(deviceId)) {
+      throw new Error("Kamu sudah pernah redeem code ini.");
+    }
+
+    // ── Sukses redeem ──
+    const now = new Date().toISOString();
+    const newRedeemedBy = [...(c.redeemedBy || []), deviceId];
+    const newRedeemedCount = newRedeemedBy.length;
+    const isExhausted = newRedeemedCount >= c.maxRedeem;
+
+    const updatedCode = {
+      ...c,
+      redeemedBy: newRedeemedBy,
+      redeemedCount: newRedeemedCount,
+      active: isExhausted ? false : c.active,
+    };
+
+    await kv.set(codeKey, JSON.stringify(updatedCode));
+
+    user.coin = (user.coin || 0) + c.coin;
+    user.totalRedeemed = (user.totalRedeemed || 0) + 1;
+    user.lastSeenAt = now;
+    await kvSetUser(deviceId, user);
+
+    // Reset failed counter kalau sukses
+    await kv.del(failKey);
+
+    res.json({
+      ok: true,
+      message: `Berhasil! +${c.coin} coin masuk.`,
+      coin: user.coin,
+      addedCoin: c.coin,
+      codeExhausted: isExhausted,
+    });
+  } catch (err) {
+    console.error("❌ [/api/redeem]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
+   /api/telegram-webhook — Nerima update dari Telegram
+   ============================================================ */
+app.post("/api/telegram-webhook", async (req, res) => {
+  try {
+    // Verifikasi secret token
+    const secret = req.headers["x-telegram-bot-api-secret-token"];
+    const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET || "";
+
+    if (!expectedSecret || secret !== expectedSecret) {
+      console.warn("[TG-WEBHOOK] Invalid secret");
+      return res.status(403).json({ ok: false });
+    }
+
+    // Respond cepat ke Telegram (harus < 5 detik)
+    res.status(200).json({ ok: true });
+
+    // Process async
+    handleTelegramUpdate(req.body).catch(err => {
+      console.error("[TG-WEBHOOK] Handler error:", err.message);
+    });
+  } catch (err) {
+    console.error("❌ [/api/telegram-webhook]", err.message);
+    res.status(200).json({ ok: true }); // selalu 200
+  }
+});
+
+/* Helper: notifikasi ke admin */
+async function tgNotifyAdmin(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminId = process.env.TELEGRAM_ADMIN_ID;
+  if (!token || !adminId) return;
+  try {
+    await http.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chat_id: adminId,
+      text,
+      parse_mode: "HTML",
+    }, { timeout: 10_000 });
+  } catch (err) {
+    console.error("[TG-NOTIFY] Error:", err.message);
+  }
+}
+
+function escHtml(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 
 /* ============================================================
