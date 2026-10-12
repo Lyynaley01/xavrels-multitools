@@ -2792,8 +2792,9 @@ if (key === "faceswap") {
 // SPECIAL TOOL: WA CHANNEL REACT (dengan Coin UI)
 // ═══════════════════════════════════════════════
 
-restoreOriginalForm();  // ← TAMBAH INI
-
+// ═══════════════════════════════════════════════
+// SPECIAL TOOL: WA CHANNEL REACT (dengan Coin UI)
+// ═══════════════════════════════════════════════
 if (key === "react") {
   $("#workspaceIssue").textContent = info.issue;
   $("#workspaceIcon").textContent = info.icon;
@@ -2821,6 +2822,11 @@ if (key === "react") {
   window.scrollTo({ top: 0, behavior: "smooth" });
   return;
 }
+
+// ═══════════════════════════════════════════════
+// GENERIC TOOL (HD, Remove BG, Pinterest, Spotify, Fpreset)
+// ═══════════════════════════════════════════════
+restoreOriginalForm();  // ← DIPINDAH KE SINI (setelah cek react)
 
 // Re-attach event listeners karena DOM baru di-restore
 const inputTabs2 = document.getElementById("inputTabs");
@@ -4389,23 +4395,100 @@ function renderReactTool() {
   wrap.className = "react-coin-ui";
 
   // ── Coin Bar ──
-  const coinBar = document.createElement("div");
-  coinBar.className = "react-coin-bar";
-  coinBar.innerHTML = `
-    <div class="react-coin-info">
-      <span class="react-coin-icon">🪙</span>
-      <div class="react-coin-meta">
-        <strong id="reactCoinBalance">0</strong>
-        <span id="reactCoinStatus">Loading...</span>
-      </div>
+  // ── Coin Bar ──
+const coinBar = document.createElement("div");
+coinBar.className = "react-coin-bar";
+coinBar.innerHTML = `
+  <div class="react-coin-info">
+    <span class="react-coin-icon">🪙</span>
+    <div class="react-coin-meta">
+      <strong id="reactCoinBalance">0</strong>
+      <span id="reactCoinStatus">Loading...</span>
     </div>
-    <div class="react-coin-actions">
-      <button type="button" class="react-redeem-btn" id="reactRedeemBtn">
-        🎁 REDEEM
-      </button>
+  </div>
+  <div class="react-coin-actions">
+    <button type="button" class="react-redeem-btn" id="reactRedeemBtn">
+      🎁 REDEEM
+    </button>
+  </div>
+`;
+wrap.append(coinBar);
+
+// ── Device ID Card ──
+const deviceCard = document.createElement("div");
+deviceCard.className = "react-device-card";
+deviceCard.innerHTML = `
+  <div class="react-device-head">
+    <span class="react-device-icon">🆔</span>
+    <div class="react-device-head-meta">
+      <strong>ID AKUN KAMU</strong>
+      <span>Kirim ID ini ke admin buat beli coin / premium</span>
     </div>
-  `;
-  wrap.append(coinBar);
+  </div>
+  <div class="react-device-body">
+    <code class="react-device-code" id="reactDeviceId" title="${deviceId}">${deviceId}</code>
+    <button type="button" class="react-device-copy" id="reactCopyId" aria-label="Copy device ID">
+      <svg class="copy-icon-default" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <svg class="copy-icon-success" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span class="react-device-copy-text">COPY</span>
+    </button>
+  </div>
+`;
+wrap.append(deviceCard);
+
+// ── Copy handler ──
+setTimeout(() => {
+  const copyBtn = document.getElementById("reactCopyId");
+  const codeEl = document.getElementById("reactDeviceId");
+  if (!copyBtn || !codeEl) return;
+
+  copyBtn.addEventListener("click", async () => {
+    const text = deviceId;
+    try {
+      // Modern clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback: bikin textarea temporary
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.append(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+
+      // Visual feedback
+      copyBtn.classList.add("is-copied");
+      const txt = copyBtn.querySelector(".react-device-copy-text");
+      if (txt) txt.textContent = "COPIED!";
+      codeEl.classList.add("is-highlight");
+
+      setTimeout(() => {
+        copyBtn.classList.remove("is-copied");
+        if (txt) txt.textContent = "COPY";
+        codeEl.classList.remove("is-highlight");
+      }, 1800);
+
+    } catch (err) {
+      console.error("[COIN] Copy error:", err.message);
+      // Fallback: select text di code element
+      const range = document.createRange();
+      range.selectNodeContents(codeEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      if (txt) txt.textContent = "SELECTED";
+    }
+  });
+}, 50);
 
   // ── Limit bar ──
   const limitBar = document.createElement("div");
