@@ -243,6 +243,15 @@ faceswap: {
   endpoint: "api/faceswap", button: "SWAP FACE",
   supportsUpload: true,
   supportsDualInput: true
+},
+"to-blur": {
+  title: "TO BLUR", titleLead: "TO", titleAccent: "BLUR", issue: "TOOL 15", number: "15",
+  category: "IMAGE LAB", icon: "💧",
+  description: "Bikin gambar jadi blur artistik dengan efek halus. Bisa via link atau upload file langsung.",
+  tip: "Upload file langsung lebih praktis — atau tempel direct link HTTPS.",
+  label: "Direct image URL (HTTPS)", placeholder: "https://example.com/photo.jpg", inputType: "url",
+  endpoint: "api/to-blur", button: "APPLY BLUR",
+  supportsUpload: true
 }
 };
 
@@ -2630,6 +2639,37 @@ function openTool(key, updateHistory = true) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
+  
+  // ═══════════════════════════════════════════════
+// SPECIAL TOOL: TO BLUR (dengan Before/After UI)
+// ═══════════════════════════════════════════════
+if (key === "to-blur") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  const blurTitleEl = $("#workspaceTitle");
+  blurTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  blurTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  renderToBlurTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
 
   // ═══════════════════════════════════════════════
   // SPECIAL TOOL: BRAT VID
@@ -4894,6 +4934,409 @@ function openRedeemModal() {
   });
 
   setTimeout(() => input.focus({ preventScroll: true }), 200);
+}
+
+/* =========================================================
+   TO BLUR — Custom Tool UI (Dual Input: URL / Upload)
+   ========================================================= */
+let toBlurMode = "url"; // "url" | "upload"
+let toBlurSelectedFile = null;
+
+function renderToBlurTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  // Reset state
+  toBlurMode = "url";
+  toBlurSelectedFile = null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "toblur-custom-ui";
+
+  // ── Tab switcher ──
+  const tabs = document.createElement("div");
+  tabs.className = "toblur-tabs";
+
+  const tabUrl = document.createElement("button");
+  tabUrl.type = "button";
+  tabUrl.className = "toblur-tab active";
+  tabUrl.dataset.mode = "url";
+  tabUrl.innerHTML = `<span>🔗</span> PAKAI LINK`;
+
+  const tabUpload = document.createElement("button");
+  tabUpload.type = "button";
+  tabUpload.className = "toblur-tab";
+  tabUpload.dataset.mode = "upload";
+  tabUpload.innerHTML = `<span>📁</span> UPLOAD FILE`;
+
+  tabs.append(tabUrl, tabUpload);
+  wrap.append(tabs);
+
+  // ── Mode URL ──
+  const urlMode = document.createElement("div");
+  urlMode.className = "toblur-mode";
+  urlMode.id = "toblurUrlMode";
+
+  const urlGroup = document.createElement("div");
+  urlGroup.className = "toblur-field-group";
+  urlGroup.innerHTML = `<label>Link Gambar (HTTPS)</label>`;
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.className = "toblur-input";
+  urlInput.id = "toblurUrlInput";
+  urlInput.placeholder = "https://example.com/photo.jpg";
+  urlInput.autocomplete = "url";
+  urlGroup.append(urlInput);
+  urlMode.append(urlGroup);
+  wrap.append(urlMode);
+
+  // ── Mode Upload ──
+  const uploadMode = document.createElement("div");
+  uploadMode.className = "toblur-mode";
+  uploadMode.id = "toblurUploadMode";
+  uploadMode.hidden = true;
+
+  const dropGroup = document.createElement("div");
+  dropGroup.className = "toblur-field-group";
+
+  const dropLabel = document.createElement("label");
+  dropLabel.textContent = "Upload gambar dari perangkat";
+  dropGroup.append(dropLabel);
+
+  const drop = document.createElement("div");
+  drop.className = "toblur-dropzone";
+  drop.id = "toblurDropzone";
+  drop.tabIndex = 0;
+
+  const fileInp = document.createElement("input");
+  fileInp.type = "file";
+  fileInp.accept = "image/png,image/jpeg,image/jpg,image/webp,image/gif";
+  fileInp.hidden = true;
+  fileInp.id = "toblurFileInput";
+  drop.append(fileInp);
+
+  const inner = document.createElement("div");
+  inner.className = "toblur-dropzone-inner";
+  inner.id = "toblurDropzoneInner";
+  inner.innerHTML = `
+    <div class="toblur-dropzone-icon">⬆</div>
+    <strong>KLIK, DROP, atau PASTE gambar</strong>
+    <span>PNG · JPG · WEBP · max 10 MB</span>
+  `;
+
+  const preview = document.createElement("div");
+  preview.className = "toblur-dropzone-preview";
+  preview.id = "toblurDropzonePreview";
+  preview.hidden = true;
+
+  const prevImg = document.createElement("img");
+  prevImg.id = "toblurPreviewImg";
+  prevImg.alt = "Preview";
+
+  const prevMeta = document.createElement("div");
+  prevMeta.className = "toblur-preview-meta";
+
+  const prevText = document.createElement("div");
+  const prevName = document.createElement("strong");
+  prevName.id = "toblurPreviewName";
+  prevName.textContent = "nama-file.jpg";
+  const prevSize = document.createElement("span");
+  prevSize.id = "toblurPreviewSize";
+  prevSize.textContent = "0 KB";
+  prevText.append(prevName, prevSize);
+
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "toblur-clear-file";
+  clearBtn.textContent = "✕";
+  clearBtn.setAttribute("aria-label", "Hapus file");
+
+  prevMeta.append(prevText, clearBtn);
+  preview.append(prevImg, prevMeta);
+
+  drop.append(inner, preview);
+  dropGroup.append(drop);
+  uploadMode.append(dropGroup);
+  wrap.append(uploadMode);
+
+  // ── Tombol Generate ──
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "toblur-gen-btn";
+  genBtn.id = "toblurGenBtn";
+  genBtn.innerHTML = `
+    <span class="toblur-gen-icon">💧</span>
+    <span class="toblur-gen-text">APPLY BLUR</span>
+    <span class="toblur-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runToBlurGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "toblur-hint";
+  hint.textContent = "💡 Hasil blur bisa di-download. Preview before/after tersedia setelah proses selesai.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // ── Handlers ──
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".toblur-tab");
+    if (!btn) return;
+    const mode = btn.dataset.mode;
+    if (mode === toBlurMode) return;
+    toBlurMode = mode;
+
+    tabs.querySelectorAll(".toblur-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.mode === mode);
+    });
+    urlMode.hidden = mode !== "url";
+    uploadMode.hidden = mode !== "upload";
+  });
+
+  // Dropzone handlers
+  function setFile(file) {
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      showMessage("Format file tidak didukung. Gunakan PNG, JPG, WEBP, atau GIF.", "error");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showMessage("File terlalu besar. Maksimal 10 MB.", "error");
+      return;
+    }
+
+    toBlurSelectedFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const pImg = document.getElementById("toblurPreviewImg");
+      const pName = document.getElementById("toblurPreviewName");
+      const pSize = document.getElementById("toblurPreviewSize");
+      const dInner = document.getElementById("toblurDropzoneInner");
+      const dPreview = document.getElementById("toblurDropzonePreview");
+
+      if (pImg) pImg.src = ev.target.result;
+      if (pName) pName.textContent = file.name;
+      if (pSize) pSize.textContent = formatBytes(file.size);
+      if (dInner) dInner.hidden = true;
+      if (dPreview) dPreview.hidden = false;
+
+      clearResult();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearFile() {
+    toBlurSelectedFile = null;
+    const fInp = document.getElementById("toblurFileInput");
+    const pImg = document.getElementById("toblurPreviewImg");
+    const dInner = document.getElementById("toblurDropzoneInner");
+    const dPreview = document.getElementById("toblurDropzonePreview");
+
+    if (fInp) fInp.value = "";
+    if (pImg) pImg.src = "";
+    if (dInner) dInner.hidden = false;
+    if (dPreview) dPreview.hidden = true;
+  }
+
+  drop.addEventListener("click", (e) => {
+    if (e.target.closest(".toblur-clear-file")) return;
+    fileInp.click();
+  });
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInp.click(); }
+  });
+  ["dragenter", "dragover"].forEach(evt => {
+    drop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.add("dragover"); });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    drop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("dragover"); });
+  });
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer?.files?.[0];
+    if (f) setFile(f);
+  });
+  fileInp.addEventListener("change", (e) => {
+    const f = e.target.files?.[0];
+    if (f) setFile(f);
+  });
+  clearBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearFile();
+  });
+
+  // Auto-focus URL
+  setTimeout(() => urlInput.focus({ preventScroll: true }), 200);
+}
+
+/* ===== Execute TO BLUR ===== */
+async function runToBlurGenerate(btnEl) {
+  let sourcePayload = null;
+
+  if (toBlurMode === "url") {
+    const url = document.getElementById("toblurUrlInput")?.value?.trim() || "";
+    if (!url) { showMessage("Isi link gambar dulu.", "error"); return; }
+    if (!/^https:\/\//i.test(url)) { showMessage("URL harus HTTPS.", "error"); return; }
+    sourcePayload = { type: "url", value: url };
+  } else {
+    if (!toBlurSelectedFile) { showMessage("Upload file gambar dulu.", "error"); return; }
+    sourcePayload = { type: "file", value: toBlurSelectedFile };
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="toblur-gen-icon">⏳</span>
+      <span class="toblur-gen-text">PROCESSING...</span>
+      <span class="toblur-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang memproses blur...", "loading");
+
+  try {
+    const token = await ensureSession();
+
+    const hasFile = sourcePayload.type === "file";
+    let fetchOpts;
+
+    if (hasFile) {
+      const fd = new FormData();
+      fd.append("image", sourcePayload.value, sourcePayload.value.name);
+      fetchOpts = {
+        method: "POST",
+        headers: { "X-Session-Token": token },
+        body: fd
+      };
+    } else {
+      fetchOpts = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": token
+        },
+        body: JSON.stringify({ url: sourcePayload.value })
+      };
+    }
+
+    let response = await fetch("/api/to-blur", fetchOpts);
+
+    if (response.status === 401) {
+      sessionToken = null; sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      if (hasFile) {
+        fetchOpts.headers["X-Session-Token"] = fresh;
+      } else {
+        fetchOpts.headers["X-Session-Token"] = fresh;
+      }
+      response = await fetch("/api/to-blur", fetchOpts);
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    // Simpan URL asli untuk before/after
+    let beforeUrl = null;
+    if (hasFile) {
+      beforeUrl = URL.createObjectURL(sourcePayload.value);
+    } else {
+      beforeUrl = sourcePayload.value;
+    }
+    activeBeforeUrl = beforeUrl;
+
+    // ── Render Result ──
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "image-result-card";
+
+    const preview = document.createElement("div");
+    preview.className = "image-preview-stage is-clickable";
+
+    const image = document.createElement("img");
+    image.className = "result-img";
+    image.alt = "Hasil To Blur";
+    image.src = objectUrl;
+    preview.append(image);
+
+    preview.addEventListener("click", () => {
+      openBeforeAfterModal({
+        title: "TO BLUR",
+        beforeUrl: beforeUrl,
+        afterUrl: objectUrl
+      });
+    });
+
+    const meta = document.createElement("div");
+    meta.className = "image-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "image-result-info";
+    info.innerHTML = "<strong>Image blurred</strong><span>Preview hasil blur kamu siap.</span>";
+
+    const actions = document.createElement("div");
+    actions.className = "image-result-actions";
+
+    const baBtn = document.createElement("button");
+    baBtn.type = "button";
+    baBtn.className = "ba-trigger-btn";
+    baBtn.innerHTML = `🔍 <span>BEFORE / AFTER</span>`;
+    baBtn.addEventListener("click", () => {
+      openBeforeAfterModal({
+        title: "TO BLUR",
+        beforeUrl: beforeUrl,
+        afterUrl: objectUrl
+      });
+    });
+    actions.append(baBtn);
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-to-blur-${Date.now()}.jpg`;
+    download.textContent = "↓  SIMPAN HASIL";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(preview, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = "Berhasil diproses";
+
+  } catch (err) {
+    console.error("[TO-BLUR] Error:", err.message);
+    showMessage(err.message || "Gagal proses blur. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="toblur-gen-icon">💧</span>
+        <span class="toblur-gen-text">APPLY BLUR</span>
+        <span class="toblur-gen-arrow">↗</span>
+      `;
+    }
+  }
 }
 
 /* =========================================================

@@ -1813,6 +1813,82 @@ app.post("/api/gen-dana", requireAuth, async (req, res) => {
 });
 
 /* ============================================================
+   /api/to-blur — Blur image effect via Siputzx API
+   ============================================================ */
+const TO_BLUR_API_BASE = "https://api.siputzx.my.id/api/canvas/blur";
+
+app.post(
+  "/api/to-blur",
+  requireAuth,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      // ── LAYER 1: Bot detection ──
+      if (isLikelyBot(req)) {
+        console.log(`🚫 [/api/to-blur] Bot detected`);
+        return res.status(403).json({ ok: false, error: "Akses ditolak." });
+      }
+
+      // ── LAYER 2: Rate limit (5/menit) ──
+      const identifier = req.ip || "unknown";
+      const limit = checkEndpointLimit(identifier, "to-blur", 5);
+      if (!limit.ok) {
+        res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+        return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+      }
+
+      // ── LAYER 3: Input validation ──
+      let imageUrl = "";
+
+      if (req.file) {
+        console.log(`📤 [TO-BLUR] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
+        const uploaded = await uploadImageToCdn(req.file.buffer, req.file.originalname || "image.jpg");
+        imageUrl = validatePublicHttpsUrl(uploaded);
+      } else if (req.body?.url) {
+        imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      } else {
+        throw new Error("Kirim url atau file image.");
+      }
+
+      if (!imageUrl) throw new Error("URL gambar tidak valid.");
+
+      // ── LAYER 4: Hit provider ──
+      console.log(`📡 [/api/to-blur] Processing: ${imageUrl}`);
+      const response = await http.get(TO_BLUR_API_BASE, {
+        params: { image: imageUrl },
+        responseType: "arraybuffer",
+        timeout: 60_000,
+        maxContentLength: 15 * 1024 * 1024,
+        headers: {
+          "User-Agent": BROWSER_UA,
+          "Accept": "image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8"
+        }
+      });
+
+      // ── LAYER 5: Validate response ──
+      const contentType = String(response.headers["content-type"] || "").toLowerCase();
+      const buffer = Buffer.from(response.data);
+
+      if (!buffer.length) throw new Error("API mengembalikan gambar kosong.");
+      if (buffer.length > 15 * 1024 * 1024) throw new Error("Gambar terlalu besar.");
+      if (contentType && !contentType.startsWith("image/")) {
+        throw new Error("API tidak mengembalikan file gambar yang valid.");
+      }
+
+      // ── LAYER 6: Return ──
+      res.set("Content-Type", contentType || "image/jpeg");
+      res.set("Cache-Control", "no-store");
+      res.set("Content-Disposition", 'inline; filename="xavrels-to-blur.jpg"');
+      res.send(buffer);
+
+    } catch (err) {
+      console.error("❌ [/api/to-blur]", err.message);
+      sendError(res, err);
+    }
+  }
+);
+
+/* ============================================================
    /api/faceswap — Face Swap AI (via jerexd API)
    ============================================================ */
 const FACESWAP_API_BASE = "https://api.jerexd.my.id/api/ai/faceswap";
