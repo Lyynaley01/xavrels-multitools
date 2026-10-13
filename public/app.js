@@ -270,6 +270,15 @@ faceswap: {
   label: "Teks chat", placeholder: "contoh: Halo, apa kabar?", inputType: "text",
   endpoint: "api/iqc-generator", button: "GENERATE IMAGE",
   supportsUpload: false
+},
+"to-boom": {
+  title: "TO BOOM", titleLead: "TO", titleAccent: "BOOM", issue: "TOOL 18", number: "18",
+  category: "IMAGE LAB", icon: "💥",
+  description: "Hapus background gambar otomatis, terus kasih efek ledakan explosion di belakangnya.",
+  tip: "Upload file langsung lebih praktis — atau tempel direct link HTTPS.",
+  label: "Direct image URL (HTTPS)", placeholder: "https://example.com/photo.jpg", inputType: "url",
+  endpoint: "api/to-boom", button: "BOOM IT!",
+  supportsUpload: true
 }
 };
 
@@ -2783,6 +2792,37 @@ function openTool(key, updateHistory = true) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
+  
+  // ═══════════════════════════════════════════════
+// SPECIAL TOOL: TO BOOM
+// ═══════════════════════════════════════════════
+if (key === "to-boom") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  const boomTitleEl = $("#workspaceTitle");
+  boomTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  boomTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  renderToBoomTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
   
   // ═══════════════════════════════════════════════
 // SPECIAL TOOL: IQC GENERATOR
@@ -6188,6 +6228,404 @@ async function runIqcGenerate(btnEl) {
         <span class="iqc-gen-icon">📱</span>
         <span class="iqc-gen-text">GENERATE IMAGE</span>
         <span class="iqc-gen-arrow">↗</span>
+      `;
+    }
+  }
+}
+
+/* =========================================================
+   TO BOOM — Custom Tool UI (Dual Input: URL / Upload)
+   ========================================================= */
+let toBoomMode = "url";
+let toBoomSelectedFile = null;
+
+function renderToBoomTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  // Reset state
+  toBoomMode = "url";
+  toBoomSelectedFile = null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "toboom-custom-ui";
+
+  // ── Tab switcher ──
+  const tabs = document.createElement("div");
+  tabs.className = "tobooms-tabs";
+
+  const tabUrl = document.createElement("button");
+  tabUrl.type = "button";
+  tabUrl.className = "toboom-tab active";
+  tabUrl.dataset.mode = "url";
+  tabUrl.innerHTML = `<span>🔗</span> PAKAI LINK`;
+
+  const tabUpload = document.createElement("button");
+  tabUpload.type = "button";
+  tabUpload.className = "toboom-tab";
+  tabUpload.dataset.mode = "upload";
+  tabUpload.innerHTML = `<span>📁</span> UPLOAD FILE`;
+
+  tabs.append(tabUrl, tabUpload);
+  wrap.append(tabs);
+
+  // ── Mode URL ──
+  const urlMode = document.createElement("div");
+  urlMode.className = "toboom-mode";
+  urlMode.id = "toboomUrlMode";
+
+  const urlGroup = document.createElement("div");
+  urlGroup.className = "toboom-field-group";
+  urlGroup.innerHTML = `<label>Link Gambar (HTTPS)</label>`;
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.className = "toboom-input";
+  urlInput.id = "toboomUrlInput";
+  urlInput.placeholder = "https://example.com/photo.jpg";
+  urlInput.autocomplete = "url";
+  urlGroup.append(urlInput);
+  urlMode.append(urlGroup);
+  wrap.append(urlMode);
+
+  // ── Mode Upload ──
+  const uploadMode = document.createElement("div");
+  uploadMode.className = "toboom-mode";
+  uploadMode.id = "toboomUploadMode";
+  uploadMode.hidden = true;
+
+  const dropGroup = document.createElement("div");
+  dropGroup.className = "toboom-field-group";
+
+  const dropLabel = document.createElement("label");
+  dropLabel.textContent = "Upload gambar dari perangkat";
+  dropGroup.append(dropLabel);
+
+  const drop = document.createElement("div");
+  drop.className = "toboom-dropzone";
+  drop.id = "toboomDropzone";
+  drop.tabIndex = 0;
+
+  const fileInp = document.createElement("input");
+  fileInp.type = "file";
+  fileInp.accept = "image/png,image/jpeg,image/jpg,image/webp";
+  fileInp.hidden = true;
+  fileInp.id = "toboomFileInput";
+  drop.append(fileInp);
+
+  const inner = document.createElement("div");
+  inner.className = "toboom-dropzone-inner";
+  inner.id = "toboomDropzoneInner";
+  inner.innerHTML = `
+    <div class="toboom-dropzone-icon">💥</div>
+    <strong>KLIK, DROP, atau PASTE gambar</strong>
+    <span>PNG · JPG · WEBP · max 10 MB</span>
+  `;
+
+  const preview = document.createElement("div");
+  preview.className = "toboom-dropzone-preview";
+  preview.id = "toboomDropzonePreview";
+  preview.hidden = true;
+
+  const prevImg = document.createElement("img");
+  prevImg.id = "toboomPreviewImg";
+  prevImg.alt = "Preview";
+
+  const prevMeta = document.createElement("div");
+  prevMeta.className = "toboom-preview-meta";
+
+  const prevText = document.createElement("div");
+  const prevName = document.createElement("strong");
+  prevName.id = "toboomPreviewName";
+  prevName.textContent = "nama-file.jpg";
+  const prevSize = document.createElement("span");
+  prevSize.id = "toboomPreviewSize";
+  prevSize.textContent = "0 KB";
+  prevText.append(prevName, prevSize);
+
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "toboom-clear-file";
+  clearBtn.textContent = "✕";
+  clearBtn.setAttribute("aria-label", "Hapus file");
+
+  prevMeta.append(prevText, clearBtn);
+  preview.append(prevImg, prevMeta);
+
+  drop.append(inner, preview);
+  dropGroup.append(drop);
+  uploadMode.append(dropGroup);
+  wrap.append(uploadMode);
+
+  // ── Tombol Generate ──
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "toboom-gen-btn";
+  genBtn.id = "toboomGenBtn";
+  genBtn.innerHTML = `
+    <span class="toboom-gen-icon">💥</span>
+    <span class="toboom-gen-text">BOOM IT!</span>
+    <span class="toboom-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runToBoomGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "toboom-hint";
+  hint.textContent = "💡 Background otomatis dihapus, terus ditimpa efek ledakan. Hasil 1:1 square.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // ── Handlers ──
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".toboom-tab");
+    if (!btn) return;
+    const mode = btn.dataset.mode;
+    if (mode === toBoomMode) return;
+    toBoomMode = mode;
+
+    tabs.querySelectorAll(".toboom-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.mode === mode);
+    });
+    urlMode.hidden = mode !== "url";
+    uploadMode.hidden = mode !== "upload";
+  });
+
+  // Dropzone
+  function setFile(file) {
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      showMessage("Format file harus PNG, JPG, atau WEBP.", "error");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showMessage("File terlalu besar. Maksimal 10 MB.", "error");
+      return;
+    }
+
+    toBoomSelectedFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const pImg = document.getElementById("toboomPreviewImg");
+      const pName = document.getElementById("toboomPreviewName");
+      const pSize = document.getElementById("toboomPreviewSize");
+      const dInner = document.getElementById("toboomDropzoneInner");
+      const dPreview = document.getElementById("toboomDropzonePreview");
+
+      if (pImg) pImg.src = ev.target.result;
+      if (pName) pName.textContent = file.name;
+      if (pSize) pSize.textContent = formatBytes(file.size);
+      if (dInner) dInner.hidden = true;
+      if (dPreview) dPreview.hidden = false;
+
+      clearResult();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearFile() {
+    toBoomSelectedFile = null;
+    const fInp = document.getElementById("toboomFileInput");
+    const pImg = document.getElementById("toboomPreviewImg");
+    const dInner = document.getElementById("toboomDropzoneInner");
+    const dPreview = document.getElementById("toboomDropzonePreview");
+
+    if (fInp) fInp.value = "";
+    if (pImg) pImg.src = "";
+    if (dInner) dInner.hidden = false;
+    if (dPreview) dPreview.hidden = true;
+  }
+
+  drop.addEventListener("click", (e) => {
+    if (e.target.closest(".toboom-clear-file")) return;
+    fileInp.click();
+  });
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInp.click(); }
+  });
+  ["dragenter", "dragover"].forEach(evt => {
+    drop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.add("dragover"); });
+  });
+  ["dragleave", "drop"].forEach(evt => {
+    drop.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("dragover"); });
+  });
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer?.files?.[0];
+    if (f) setFile(f);
+  });
+  fileInp.addEventListener("change", (e) => {
+    const f = e.target.files?.[0];
+    if (f) setFile(f);
+  });
+  clearBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    clearFile();
+  });
+
+  setTimeout(() => urlInput.focus({ preventScroll: true }), 200);
+}
+
+/* ===== Execute TO BOOM ===== */
+async function runToBoomGenerate(btnEl) {
+  let sourcePayload = null;
+
+  if (toBoomMode === "url") {
+    const url = document.getElementById("toboomUrlInput")?.value?.trim() || "";
+    if (!url) { showMessage("Isi link gambar dulu.", "error"); return; }
+    if (!/^https:\/\//i.test(url)) { showMessage("URL harus HTTPS.", "error"); return; }
+    sourcePayload = { type: "url", value: url };
+  } else {
+    if (!toBoomSelectedFile) { showMessage("Upload file gambar dulu.", "error"); return; }
+    sourcePayload = { type: "file", value: toBoomSelectedFile };
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="toboom-gen-icon">⏳</span>
+      <span class="toboom-gen-text">PROCESSING...</span>
+      <span class="toboom-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang memproses... 💥 (bisa 20-60 detik)", "loading");
+
+  try {
+    const token = await ensureSession();
+
+    const hasFile = sourcePayload.type === "file";
+    let fetchOpts;
+
+    if (hasFile) {
+      const fd = new FormData();
+      fd.append("image", sourcePayload.value, sourcePayload.value.name);
+      fetchOpts = {
+        method: "POST",
+        headers: { "X-Session-Token": token },
+        body: fd
+      };
+    } else {
+      fetchOpts = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": token
+        },
+        body: JSON.stringify({ url: sourcePayload.value })
+      };
+    }
+
+    let response = await fetch("/api/to-boom", fetchOpts);
+
+    if (response.status === 401) {
+      sessionToken = null; sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      fetchOpts.headers["X-Session-Token"] = fresh;
+      response = await fetch("/api/to-boom", fetchOpts);
+    }
+
+    if (!response.ok) {
+      let message = `Request gagal (HTTP ${response.status}).`;
+      const ct = response.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await response.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    // Simpan URL asli untuk before/after
+    let beforeUrl = null;
+    if (hasFile) {
+      beforeUrl = URL.createObjectURL(sourcePayload.value);
+    } else {
+      beforeUrl = sourcePayload.value;
+    }
+    activeBeforeUrl = beforeUrl;
+
+    // ── Render Result ──
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "image-result-card";
+
+    const preview = document.createElement("div");
+    preview.className = "image-preview-stage is-clickable";
+
+    const image = document.createElement("img");
+    image.className = "result-img";
+    image.alt = "Hasil To Boom";
+    image.src = objectUrl;
+    preview.append(image);
+
+    preview.addEventListener("click", () => {
+      openBeforeAfterModal({
+        title: "TO BOOM",
+        beforeUrl: beforeUrl,
+        afterUrl: objectUrl
+      });
+    });
+
+    const meta = document.createElement("div");
+    meta.className = "image-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "image-result-info";
+    info.innerHTML = "<strong>💥 BOOM effect applied</strong><span>Background dihapus + efek ledakan ditambahkan.</span>";
+
+    const actions = document.createElement("div");
+    actions.className = "image-result-actions";
+
+    const baBtn = document.createElement("button");
+    baBtn.type = "button";
+    baBtn.className = "ba-trigger-btn";
+    baBtn.innerHTML = `🔍 <span>BEFORE / AFTER</span>`;
+    baBtn.addEventListener("click", () => {
+      openBeforeAfterModal({
+        title: "TO BOOM",
+        beforeUrl: beforeUrl,
+        afterUrl: objectUrl
+      });
+    });
+    actions.append(baBtn);
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-to-boom-${Date.now()}.jpg`;
+    download.textContent = "↓  SIMPAN HASIL";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(preview, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = "Berhasil diproses";
+
+  } catch (err) {
+    console.error("[TO-BOOM] Error:", err.message);
+    showMessage(err.message || "Gagal proses. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="toboom-gen-icon">💥</span>
+        <span class="toboom-gen-text">BOOM IT!</span>
+        <span class="toboom-gen-arrow">↗</span>
       `;
     }
   }

@@ -5,7 +5,8 @@ const rateLimit = require("express-rate-limit");
 const multer = require("multer");
 const FormData = require("form-data");
 const crypto = require("crypto");
-const path = require("path");
+const path = require("path");  // ← ini udah ada
+const fs = require("fs");      // ← TAMBAH kalau belum
 const { kv } = require("@vercel/kv");
 const { handleTelegramUpdate } = require("./telegram-bot");
 
@@ -2254,6 +2255,139 @@ app.post(
     }
   }
 );
+
+/* ============================================================
+   /api/to-boom — Remove BG + Explosion Composite (1:1)
+   ============================================================ */
+const sharp = require("sharp");
+const path = require("path");
+const fs = require("fs");
+
+const TO_BOOM_SIZE = 1080;
+const TO_BOOM_BOX_W = 0.82;
+const TO_BOOM_BOX_H = 0.66;
+const TO_BOOM_ANCHOR = "bottom-right";
+const TO_BOOM_QUALITY = 92;
+
+// Cache BG image di memory biar gak baca file tiap request
+let toBoomBgCache = null;
+
+async function loadToBoomBg() {
+  if (toBoomBgCache) return toBoomBgCache;
+
+  const bgPath = path.join(__dirname, "public", "assets", "explosion.jpg");
+  if (!fs.existsSync(bgPath)) {
+    throw new Error("Asset explosion.jpg belum di-upload ke public/assets/");
+  }
+
+  toBoomBgCache = await sharp(bgPath)
+    .resize(TO_BOOM_SIZE, TO_BOOM_SIZE, { fit: "cover", position: "centre" })
+    .toBuffer();
+
+  return toBoomBgCache;
+}
+
+async function compositeBoom(subjectPngBuffer) {
+  const bg = await loadToBoomBg();
+
+  const boxW = Math.round(TO_BOOM_SIZE * TO_BOOM_BOX_W);
+  const boxH = Math.round(TO_BOOM_SIZE * TO_BOOM_BOX_H);
+
+  const subject = await sharp(subjectPngBuffer)
+    .resize(boxW, boxH, { fit: "inside" })
+    .toBuffer();
+
+  const meta = await sharp(subject).metadata();
+  const sw = meta.width;
+  const sh = meta.height;
+
+  let left, top;
+  switch (TO_BOOM_ANCHOR) {
+    case "center":
+      left = Math.round((TO_BOOM_SIZE - sw) / 2);
+      top = Math.round((TO_BOOM_SIZE - sh) / 2);
+      break;
+    case "bottom-left":
+      left = 0;
+      top = TO_BOOM_SIZE - sh;
+      break;
+    default: // bottom-right
+      left = TO_BOOM_SIZE - sw;
+      top = TO_BOOM_SIZE - sh;
+  }
+
+  return await sharp(bg)
+    .composite([{ input: subject, left, top }])
+    .jpeg({ quality: TO_BOOM_QUALITY })
+    .toBuffer();
+}
+
+app.post("/api/to-boom", requireAuth, upload.single("image"), async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/to-boom] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (3/menit — proses berat: remove bg + composite) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "to-boom", 3);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    let imageUrl = "";
+
+    if (req.file) {
+      console.log(`📤 [TO-BOOM] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
+      const uploaded = await uploadImageToCdn(req.file.buffer, req.file.originalname || "image.jpg");
+      imageUrl = validatePublicHttpsUrl(uploaded);
+    } else if (req.body?.url) {
+      imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
+    } else {
+      throw new Error("Kirim url atau file image.");
+    }
+
+    if (!imageUrl) throw new Error("URL gambar tidak valid.");
+
+    // ── LAYER 4: Remove BG via Nexadev ──
+    console.log(`📡 [TO-BOOM] Remove BG: ${imageUrl}`);
+    const rmbgResponse = await http.get("https://api.nexadev.my.id/tools/remove/", {
+      params: { url: imageUrl },
+      responseType: "arraybuffer",
+      timeout: 90_000,
+      maxContentLength: 12 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/avif,image/webp,image/apng,image/png,image/jpeg,image/*,*/*;q=0.8",
+        "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://api.nexadev.my.id/",
+        "Origin": "https://api.nexadev.my.id"
+      }
+    });
+
+    const subjectPng = requireImageResponse(rmbgResponse);
+    console.log(`✅ [TO-BOOM] BG removed: ${subjectPng.length} bytes`);
+
+    // ── LAYER 5: Composite dengan explosion.jpg ──
+    console.log(`💥 [TO-BOOM] Compositing...`);
+    const finalBuffer = await compositeBoom(subjectPng);
+    console.log(`✅ [TO-BOOM] Final: ${finalBuffer.length} bytes`);
+
+    // ── LAYER 6: Return ──
+    res.set("Content-Type", "image/jpeg");
+    res.set("Cache-Control", "no-store");
+    res.set("Content-Disposition", 'inline; filename="xavrels-to-boom.jpg"');
+    res.send(finalBuffer);
+
+  } catch (err) {
+    console.error("❌ [/api/to-boom]", err.message);
+    sendError(res, err);
+  }
+});
 
 
 /* ============================================================
