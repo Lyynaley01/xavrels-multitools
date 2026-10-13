@@ -1238,7 +1238,6 @@ const response = await http.get(FPRESET_API_BASE, {
 
     const data = fp_parseAmFinderResponse(response.data);
     if (!data) throw new Error("API tidak mengembalikan data.");
-    if (data.found === false) throw new Error("Preset tidak ditemukan di video ini.");
 
     const video        = data.video        || {};
     const authorDetail = data.authorDetail || data.author || video.author || {};
@@ -1286,37 +1285,100 @@ const response = await http.get(FPRESET_API_BASE, {
           }))
       : [];
 
-    const result = {
-      author: safeText(firstString(data.author, authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id), 80),
-      username: safeText(firstString(authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id, authorDetail.uniqueID), 80),
-      nickname: safeText(firstString(authorDetail.nickname, authorDetail.displayName, authorDetail.display_name, authorDetail.name), 120),
-      bio: safeText(firstString(authorDetail.bio, authorDetail.signature, authorDetail.bioDescription, authorDetail.bio_description), 500),
-      bioLink: typeof authorDetail.bioLink === "string" && /^https?:\/\//i.test(authorDetail.bioLink)
-        ? safeText(authorDetail.bioLink, 500)
-        : "",
-      avatar: typeof avatarUrl === "string" && /^https?:\/\//i.test(avatarUrl)
-        ? avatarUrl
-        : "",
+    // Parse shareLinks (WhatsApp, Telegram, dll)
+const shareLinks = Array.isArray(data.shareLinks)
+  ? data.shareLinks
+      .filter((l) => l?.url && typeof l.url === "string" && /^https?:\/\//i.test(l.url))
+      .map((l) => ({
+        url: safeText(l.url, 1000),
+        kind: safeText(String(l.kind || "other"), 40)
+      }))
+  : [];
 
-      videoId: safeText(String(video.id || ""), 40),
-      sourceUrl: safeText(String(video.url || inputUrl), 500),
-      caption: safeText(String(video.description || ""), 500),
-      cover: typeof video.cover === "string" && /^https?:\/\//i.test(video.cover)
-        ? video.cover
-        : "",
-      videoUrl: typeof video.playUrlNoWm === "string" && /^https?:\/\//i.test(video.playUrlNoWm)
-        ? video.playUrlNoWm
-        : (typeof video.playUrl === "string" && /^https?:\/\//i.test(video.playUrl) ? video.playUrl : ""),
+// Parse otherLinks (bio, link-in-bio, dll)
+const otherLinks = Array.isArray(data.otherLinks)
+  ? data.otherLinks
+      .filter((l) => l?.url && typeof l.url === "string" && /^https?:\/\//i.test(l.url))
+      .map((l) => ({
+        url: safeText(l.url, 1000),
+        source: safeText(String(l.source || "unknown"), 40)
+      }))
+  : [];
 
-      stats: {
-        views: firstCount(stats.views, stats.playCount, stats.viewCount, stats.play_count, stats.view_count, video.playCount, video.play_count, video.viewCount, video.view_count),
-        likes: firstCount(stats.likes, stats.diggCount, stats.likeCount, stats.like_count, stats.digg_count, video.diggCount, video.digg_count, video.likeCount, video.like_count),
-        comments: firstCount(stats.comments, stats.commentCount, stats.comment_count, video.commentCount, video.comment_count),
-        shares: firstCount(stats.shares, stats.shareCount, stats.share_count, video.shareCount, video.share_count)
-      },
+// Parse context (level + matched keywords)
+const context = data.context && typeof data.context === "object" ? {
+  level: safeText(String(data.context.level || ""), 40),
+  matched: Array.isArray(data.context.matched)
+    ? data.context.matched.map((m) => safeText(String(m), 60)).filter(Boolean)
+    : []
+} : { level: "", matched: [] };
 
-      presetLinks
-    };
+// Parse checked (statistik scan)
+const checked = data.checked && typeof data.checked === "object" ? {
+  description: data.checked.description === true,
+  bio: data.checked.bio === true,
+  bioLinkPage: data.checked.bioLinkPage === true,
+  linkInBio: Number(data.checked.linkInBio) || 0,
+  comments: Number(data.checked.comments) || 0,
+  commentsDisabled: data.checked.commentsDisabled === true,
+  replies: Number(data.checked.replies) || 0,
+  context: safeText(String(data.checked.context || ""), 40),
+  invalidLinks: Number(data.checked.invalidLinks) || 0
+} : null;
+
+// Parse scanned
+const scanned = data.scanned && typeof data.scanned === "object" ? {
+  description: data.scanned.description === true,
+  bio: data.scanned.bio === true,
+  bioLinkPage: data.scanned.bioLinkPage === true,
+  comments: Number(data.scanned.comments) || 0,
+  replies: Number(data.scanned.replies) || 0
+} : null;
+
+// Flag: apakah preset ketemu
+const found = data.found === true || presetLinks.length > 0;
+
+const result = {
+  found,
+
+  // 🔥 Pesan dari API (kalau preset gak ketemu, ini berisi alasan)
+  message: safeText(String(data.message || ""), 500),
+
+  author: safeText(firstString(data.author, authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id), 80),
+  username: safeText(firstString(authorDetail.uniqueId, authorDetail.username, authorDetail.unique_id, authorDetail.uniqueID), 80),
+  nickname: safeText(firstString(authorDetail.nickname, authorDetail.displayName, authorDetail.display_name, authorDetail.name), 120),
+  bio: safeText(firstString(authorDetail.bio, authorDetail.signature, authorDetail.bioDescription, authorDetail.bio_description), 500),
+  bioLink: typeof authorDetail.bioLink === "string" && /^https?:\/\//i.test(authorDetail.bioLink)
+    ? safeText(authorDetail.bioLink, 500)
+    : "",
+  avatar: typeof avatarUrl === "string" && /^https?:\/\//i.test(avatarUrl)
+    ? avatarUrl
+    : "",
+
+  videoId: safeText(String(video.id || ""), 40),
+  sourceUrl: safeText(String(video.url || inputUrl), 500),
+  caption: safeText(String(video.description || ""), 500),
+  cover: typeof video.cover === "string" && /^https?:\/\//i.test(video.cover)
+    ? video.cover
+    : "",
+  videoUrl: typeof video.playUrlNoWm === "string" && /^https?:\/\//i.test(video.playUrlNoWm)
+    ? video.playUrlNoWm
+    : (typeof video.playUrl === "string" && /^https?:\/\//i.test(video.playUrl) ? video.playUrl : ""),
+
+  stats: {
+    views: firstCount(stats.views, stats.playCount, stats.viewCount, stats.play_count, stats.view_count, video.playCount, video.play_count, video.viewCount, video.view_count),
+    likes: firstCount(stats.likes, stats.diggCount, stats.likeCount, stats.like_count, stats.digg_count, video.diggCount, video.digg_count, video.likeCount, video.like_count),
+    comments: firstCount(stats.comments, stats.commentCount, stats.comment_count, video.commentCount, video.comment_count),
+    shares: firstCount(stats.shares, stats.shareCount, stats.share_count, video.shareCount, video.share_count)
+  },
+
+  presetLinks,
+  shareLinks,
+  otherLinks,
+  context,
+  checked,
+  scanned
+};
 
         // Simpan ke cache
     cacheSet(cacheKey, result, 15 * 60 * 1000);

@@ -1349,98 +1349,224 @@ function renderFpreset(data, targetContainer) {
   }
 
   /* ===== PRESET LIST ===== */
-  if (presetLinks.length) {
-    const listWrap = document.createElement("div");
-    listWrap.className = "fpreset-list";
+if (presetLinks.length) {
+  const listWrap = document.createElement("div");
+  listWrap.className = "fpreset-list";
 
-    const listTitle = document.createElement("div");
-    listTitle.className = "fpreset-list-title";
-    listTitle.innerHTML = `📦 <strong>Preset Tersedia</strong> <span>(${presetLinks.length})</span>`;
-    listWrap.append(listTitle);
+  const listTitle = document.createElement("div");
+  listTitle.className = "fpreset-list-title";
+  listTitle.innerHTML = `📦 <strong>Preset Tersedia</strong> <span>(${presetLinks.length})</span>`;
+  listWrap.append(listTitle);
 
-    presetLinks.forEach((p, i) => {
-      const row = document.createElement("div");
-      row.className = "fpreset-item";
+  presetLinks.forEach((p, i) => {
+    const row = document.createElement("div");
+    row.className = "fpreset-item";
 
-      // Thumbnail preset (kalau ada)
-      if (p.thumb) {
-        const thumb = document.createElement("div");
-        thumb.className = "fpreset-item-thumb";
-        const img = document.createElement("img");
-        img.src = p.thumb;
-        img.alt = p.title || "Preset";
-        img.loading = "lazy";
-        img.onerror = () => { thumb.remove(); };
-        thumb.append(img);
-        row.append(thumb);
-      }
+    if (p.thumb) {
+      const thumb = document.createElement("div");
+      thumb.className = "fpreset-item-thumb";
+      const img = document.createElement("img");
+      img.src = p.thumb;
+      img.alt = p.title || "Preset";
+      img.loading = "lazy";
+      img.onerror = () => { thumb.remove(); };
+      thumb.append(img);
+      row.append(thumb);
+    }
 
-      const body = document.createElement("div");
-      body.className = "fpreset-item-body";
+    const body = document.createElement("div");
+    body.className = "fpreset-item-body";
 
-      const titleRow = document.createElement("div");
-      titleRow.className = "fpreset-item-title-row";
+    const titleRow = document.createElement("div");
+    titleRow.className = "fpreset-item-title-row";
 
-      const badge = document.createElement("span");
-      badge.className = "fpreset-item-type";
-      const typeRaw = String(p.type || "").toLowerCase();
-      const titleRaw = String(p.title || "").toLowerCase();
-      let label = (p.type || "PRESET").toUpperCase();
-      if (typeRaw.includes("5mb") || titleRaw.includes("5mb")) label = "5MB";
-      else if (typeRaw.includes("xml") || titleRaw.includes("xml")) label = "XML";
-      badge.textContent = label;
+    const badge = document.createElement("span");
+    badge.className = "fpreset-item-type";
+    const typeRaw = String(p.type || "").toLowerCase();
+    const titleRaw = String(p.title || "").toLowerCase();
+    let label = (p.type || "PRESET").toUpperCase();
+    if (typeRaw.includes("5mb") || titleRaw.includes("5mb")) label = "5MB";
+    else if (typeRaw.includes("xml") || titleRaw.includes("xml")) label = "XML";
+    badge.textContent = label;
 
-      const name = document.createElement("strong");
-      name.textContent = p.title || `Preset ${i + 1}`;
-      titleRow.append(badge, name);
+    const name = document.createElement("strong");
+    name.textContent = p.title || `Preset ${i + 1}`;
+    titleRow.append(badge, name);
 
-      if (p.verified) {
-        const v = document.createElement("span");
-        v.className = "fpreset-item-verified";
-        v.textContent = "✓";
-        v.title = "Verified";
-        titleRow.append(v);
-      }
+    if (p.verified) {
+      const v = document.createElement("span");
+      v.className = "fpreset-item-verified";
+      v.textContent = "✓";
+      v.title = "Verified";
+      titleRow.append(v);
+    }
 
-      body.append(titleRow);
+    body.append(titleRow);
 
-      const metaBits = [];
-      if (p.size) metaBits.push(p.size);
-      if (p.ratio) metaBits.push(p.ratio);
-      if (p.byAuthor) metaBits.push("by creator");
-      if (metaBits.length) {
-        const meta = document.createElement("span");
-        meta.className = "fpreset-item-meta";
-        meta.textContent = metaBits.join(" · ");
-        body.append(meta);
-      }
+    const metaBits = [];
+    if (p.size) metaBits.push(p.size);
+    if (p.ratio) metaBits.push(p.ratio);
+    if (p.byAuthor) metaBits.push("by creator");
+    if (metaBits.length) {
+      const meta = document.createElement("span");
+      meta.className = "fpreset-item-meta";
+      meta.textContent = metaBits.join(" · ");
+      body.append(meta);
+    }
 
-      if (p.detail && p.detail !== p.title) {
-        const detail = document.createElement("small");
-        detail.className = "fpreset-item-detail";
-        detail.textContent = p.detail;
-        body.append(detail);
-      }
+    if (p.detail && p.detail !== p.title) {
+      const detail = document.createElement("small");
+      detail.className = "fpreset-item-detail";
+      detail.textContent = p.detail;
+      body.append(detail);
+    }
 
-      const action = document.createElement("a");
-      action.className = "fpreset-item-dl";
-      action.href = p.url;
-      action.target = "_blank";
-      action.rel = "noopener noreferrer";
-      action.setAttribute("download", "");
-      action.innerHTML = `⬇ <span>DOWNLOAD</span>`;
+    const action = document.createElement("a");
+    action.className = "fpreset-item-dl";
+    action.href = p.url;
+    action.target = "_blank";
+    action.rel = "noopener noreferrer";
+    action.setAttribute("download", "");
+    action.innerHTML = `⬇ <span>DOWNLOAD</span>`;
 
-      row.append(body, action);
-      listWrap.append(row);
-    });
+    row.append(body, action);
+    listWrap.append(row);
+  });
 
-    card.append(listWrap);
+  card.append(listWrap);
+} else {
+  // 🔥 Preset gak ketemu — tampilkan notice + alasan dari API + stats scan
+  const noticeWrap = document.createElement("div");
+  noticeWrap.className = "fpreset-no-preset";
+
+  const noticeTitle = document.createElement("div");
+  noticeTitle.className = "fpreset-no-preset-title";
+  noticeTitle.textContent = "⚠️ PRESET TIDAK DITEMUKAN";
+  noticeWrap.append(noticeTitle);
+
+  if (item.message) {
+    const noticeMsg = document.createElement("p");
+    noticeMsg.className = "fpreset-no-preset-msg";
+    noticeMsg.textContent = item.message;
+    noticeWrap.append(noticeMsg);
   } else {
-    const empty = document.createElement("div");
-    empty.className = "fpreset-no-preset";
-    empty.textContent = "⚠️ Tidak ada preset 5MB/XML di video ini.";
-    card.append(empty);
+    const noticeMsg = document.createElement("p");
+    noticeMsg.className = "fpreset-no-preset-msg";
+    noticeMsg.textContent = "Tidak ada link preset 5MB/XML di video ini.";
+    noticeWrap.append(noticeMsg);
   }
+
+  // Stats scan (berapa komentar & balasan yang udah dicek)
+  const sc = item.scanned || item.checked;
+  if (sc) {
+    const statsRow = document.createElement("div");
+    statsRow.className = "fpreset-no-preset-stats";
+
+    const statBits = [];
+    if (sc.description) statBits.push("Deskripsi ✓");
+    if (sc.bio) statBits.push("Bio ✓");
+    if (sc.bioLinkPage) statBits.push("Link-in-bio ✓");
+    if (sc.comments) statBits.push(`${sc.comments} komentar`);
+    if (sc.replies) statBits.push(`${sc.replies} balasan`);
+
+    if (statBits.length) {
+      const statText = document.createElement("span");
+      statText.className = "fpreset-no-preset-scan";
+      statText.textContent = "Sudah dicek: " + statBits.join(" · ");
+      statsRow.append(statText);
+      noticeWrap.append(statsRow);
+    }
+  }
+
+  // Context info (kalau ada)
+  if (item.context?.level || item.context?.matched?.length) {
+    const ctxRow = document.createElement("div");
+    ctxRow.className = "fpreset-no-preset-context";
+
+    const ctxText = document.createElement("span");
+    const level = item.context.level ? `[${item.context.level}] ` : "";
+    const matched = item.context.matched?.length
+      ? item.context.matched.join(", ")
+      : "";
+    ctxText.textContent = `${level}${matched}`;
+    ctxRow.append(ctxText);
+    noticeWrap.append(ctxRow);
+  }
+
+  card.append(noticeWrap);
+}
+
+/* ===== SHARE LINKS (WhatsApp, dll) ===== */
+const shareLinks = Array.isArray(item.shareLinks) ? item.shareLinks : [];
+if (shareLinks.length) {
+  const shareWrap = document.createElement("div");
+  shareWrap.className = "fpreset-share";
+
+  const shareTitle = document.createElement("div");
+  shareTitle.className = "fpreset-share-title";
+  shareTitle.innerHTML = `🔗 <strong>Kontak & Channel Creator</strong>`;
+  shareWrap.append(shareTitle);
+
+  shareLinks.slice(0, 6).forEach((l) => {
+    const a = document.createElement("a");
+    a.className = "fpreset-share-item";
+    a.href = l.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+
+    let icon = "🔗";
+    let label = l.url;
+    if (l.kind === "chat") { icon = "💬"; label = "WhatsApp Chat"; }
+    else if (l.kind === "channel") { icon = "📢"; label = "WhatsApp Channel"; }
+
+    // Potong URL panjang
+    const displayLabel = label.length > 45 ? label.slice(0, 42) + "..." : label;
+
+    a.innerHTML = `<span>${icon}</span> <span>${displayLabel}</span>`;
+    shareWrap.append(a);
+  });
+
+  card.append(shareWrap);
+}
+
+/* ===== OTHER LINKS (bio, link-in-bio, dll) ===== */
+const otherLinks = Array.isArray(item.otherLinks) ? item.otherLinks : [];
+if (otherLinks.length) {
+  const otherWrap = document.createElement("div");
+  otherWrap.className = "fpreset-other";
+
+  const otherTitle = document.createElement("div");
+  otherTitle.className = "fpreset-other-title";
+  otherTitle.innerHTML = `🌐 <strong>Link Lain dari Creator</strong>`;
+  otherWrap.append(otherTitle);
+
+  otherLinks.slice(0, 8).forEach((l) => {
+    const a = document.createElement("a");
+    a.className = "fpreset-other-item";
+    a.href = l.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+
+    let icon = "🔗";
+    if (l.source === "bioLink") icon = "🌳";
+
+    // Extract hostname untuk display yang lebih clean
+    let displayLabel = l.url;
+    try {
+      const u = new URL(l.url);
+      displayLabel = u.hostname + (u.pathname.length > 1 ? u.pathname.slice(0, 20) : "");
+    } catch (_) {}
+
+    if (displayLabel.length > 45) {
+      displayLabel = displayLabel.slice(0, 42) + "...";
+    }
+
+    a.innerHTML = `<span>${icon}</span> <span>${displayLabel}</span>`;
+    otherWrap.append(a);
+  });
+
+  card.append(otherWrap);
+}
 
   /* ===== OTHER LINKS ===== */
 /* ===== ACTIONS ===== */
