@@ -1951,6 +1951,107 @@ app.post(
 );
 
 /* ============================================================
+   /api/iqc-generator — iPhone Chat Screenshot Generator
+   ============================================================ */
+const IQC_API_BASE = "https://api-faa.my.id/faa/iqcv2";
+
+app.post("/api/iqc-generator", requireAuth, async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/iqc-generator] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (5/menit) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "iqc-generator", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    const teks = safeText(req.body?.teks, 200);
+    const jam = safeText(req.body?.jam, 5);
+    const batreRaw = req.body?.batre;
+
+    if (!teks || teks.length < 1) {
+      throw new Error("Teks chat tidak boleh kosong.");
+    }
+    if (teks.length > 200) {
+      throw new Error("Teks chat maksimal 200 karakter.");
+    }
+
+    if (!jam || !/^\d{2}\.\d{2}$/.test(jam)) {
+      throw new Error("Format jam harus HH.MM (contoh: 17.30).");
+    }
+    const [h, m] = jam.split(".").map(Number);
+    if (h < 0 || h > 23 || m < 0 || m > 59) {
+      throw new Error("Jam tidak valid. Range: 00.00 - 23.59");
+    }
+
+    const batre = parseInt(batreRaw, 10);
+    if (!Number.isFinite(batre) || batre < 0 || batre > 100) {
+      throw new Error("Baterai harus angka 0-100.");
+    }
+
+    // ── LAYER 4: Hit provider ──
+    console.log(`📡 [/api/iqc-generator] Generating: teks="${teks.slice(0, 30)}..." jam=${jam} batre=${batre}%`);
+    const response = await http.get(IQC_API_BASE, {
+      params: {
+        prompt: teks,
+        jam: jam,
+        batre: batre
+      },
+      responseType: "arraybuffer",
+      timeout: 60_000,
+      maxContentLength: 15 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8"
+      },
+      validateStatus: () => true
+    });
+
+    // ── LAYER 5: Validate response ──
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    const buffer = Buffer.from(response.data);
+
+    if (!buffer.length) throw new Error("Provider mengembalikan gambar kosong.");
+    if (buffer.length > 15 * 1024 * 1024) throw new Error("Gambar terlalu besar.");
+
+    // Kalau provider balikin JSON error, parse & lempar pesan yang jelas
+    if (contentType.includes("application/json") || contentType.includes("text/")) {
+      try {
+        const parsed = JSON.parse(buffer.toString("utf8"));
+        const msg = parsed?.error || parsed?.message || "Provider gagal membuat gambar.";
+        throw new Error(msg);
+      } catch (parseErr) {
+        if (parseErr.message && !parseErr.message.includes("Unexpected")) {
+          throw parseErr;
+        }
+        throw new Error("Provider tidak mengembalikan gambar yang valid. Coba lagi.");
+      }
+    }
+
+    if (contentType && !contentType.startsWith("image/")) {
+      throw new Error("Provider tidak mengembalikan gambar yang valid.");
+    }
+
+    // ── LAYER 6: Return ──
+    res.set("Content-Type", contentType || "image/jpeg");
+    res.set("Cache-Control", "no-store");
+    res.set("Content-Disposition", 'inline; filename="xavrels-iqc.jpg"');
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ [/api/iqc-generator]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
    /api/aio-downloader — All-in-One Social Media Downloader
    ============================================================ */
 const AIO_API_BASE = "https://api-faa.my.id/faa/aio";

@@ -5562,3 +5562,230 @@ footer>span:nth-child(2){order:3;width:100%}
   .aio-preview-stage { max-height: 55vh; }
   .aio-preview-title { font-size: 14px; }
 }
+/* =========================================================
+   IQC GENERATOR — Custom Tool UI
+   ========================================================= */
+.iqc-custom-ui { display: flex; flex-direction: column; gap: 14px; }
+
+.iqc-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.iqc-field-group label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: var(--ink);
+}
+.iqc-field-half { flex: 1 1 0; min-width: 0; }
+
+.iqc-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.iqc-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 13px 12px;
+  border: 1.5px solid #cfd2d9;
+  background: #fffdf9;
+  color: var(--ink);
+  outline: 0;
+  font-size: 12px;
+  font-family: inherit;
+  border-radius: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.iqc-input:focus {
+  border-color: #ec4899;
+  box-shadow: 3px 3px 0 #ec489928;
+}
+.iqc-input::placeholder { color: #a0a5b0; }
+
+.iqc-input-hint {
+  font-size: 9px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.iqc-gen-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #ec4899, #be185d);
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.iqc-gen-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+.iqc-gen-btn:hover:not(:disabled)::before { transform: translateX(100%); }
+.iqc-gen-btn:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.iqc-gen-btn:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.iqc-gen-btn:disabled { cursor: wait; opacity: 0.65; }
+.iqc-gen-icon { font-size: 20px; line-height: 1; }
+.iqc-gen-text { flex: 1 1 auto; text-align: center; }
+.iqc-gen-arrow { font-size: 16px; }
+
+.iqc-hint {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+}
+
+/* ── Result Card ── */
+.iqc-result-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1.5px solid #d9dce2;
+  background: #fff;
+  border-radius: 12px;
+  animation: pinCardEnter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: 0 4px 12px rgba(23,27,43,0.06);
+}
+.iqc-result-image-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background:
+    linear-gradient(45deg, #f0f0f3 25%, transparent 25%),
+    linear-gradient(-45deg, #f0f0f3 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0f0f3 75%),
+    linear-gradient(-45deg, transparent 75%, #f0f0f3 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-color: #fafafb;
+  min-height: 200px;
+  max-height: 600px;
+}
+.iqc-result-img {
+  display: block;
+  max-width: 100%;
+  max-height: 550px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  animation: cecanImgEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.iqc-result-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+.iqc-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.iqc-result-info strong {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.iqc-result-info span {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.iqc-result-detail {
+  font-size: 10px !important;
+  color: #ec4899 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+.iqc-result-actions { display: flex; gap: 8px; }
+.iqc-result-actions .download-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 10px;
+}
+@media (min-width: 621px) {
+  .iqc-result-meta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .iqc-result-actions .download-btn {
+    flex: 0 0 auto;
+    min-width: 180px;
+  }
+}
+
+/* ── Card art di grid ── */
+.art-iqc {
+  background-color: #ec4899;
+}
+.art-iqc > span {
+  color: #fff;
+  -webkit-text-stroke: 1.5px var(--ink);
+  font-size: 62px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 620px) {
+  .iqc-row {
+    gap: 8px;
+  }
+  .iqc-input {
+    padding: 12px 11px;
+    font-size: 11.5px;
+  }
+  .iqc-gen-btn {
+    font-size: 11px;
+    padding: 14px 16px;
+  }
+  .iqc-gen-icon { font-size: 18px; }
+  .iqc-result-image-wrap {
+    padding: 10px;
+    max-height: 500px;
+  }
+  .iqc-result-img {
+    max-height: 460px;
+  }
+}

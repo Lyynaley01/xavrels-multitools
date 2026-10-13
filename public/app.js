@@ -261,6 +261,15 @@ faceswap: {
   label: "Link video (HTTPS)", placeholder: "https://vt.tiktok.com/... atau https://www.instagram.com/...", inputType: "url",
   endpoint: "api/aio-downloader", button: "DOWNLOAD",
   supportsUpload: false
+},
+"iqc-generator": {
+  title: "IQC GENERATOR", titleLead: "IQC", titleAccent: "GENERATOR", issue: "TOOL 17", number: "17",
+  category: "FUN LAB", icon: "📱",
+  description: "Bikin screenshot chat WhatsApp ala iPhone dari teks, jam, dan baterai custom.",
+  tip: "Masukkan teks chat, jam (format HH.MM), dan persentase baterai (0-100).",
+  label: "Teks chat", placeholder: "contoh: Halo, apa kabar?", inputType: "text",
+  endpoint: "api/iqc-generator", button: "GENERATE IMAGE",
+  supportsUpload: false
 }
 };
 
@@ -2774,6 +2783,37 @@ function openTool(key, updateHistory = true) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
+  
+  // ═══════════════════════════════════════════════
+// SPECIAL TOOL: IQC GENERATOR
+// ═══════════════════════════════════════════════
+if (key === "iqc-generator") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  const iqcTitleEl = $("#workspaceTitle");
+  iqcTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  iqcTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  renderIqcGeneratorTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
   
   // ═══════════════════════════════════════════════
 // SPECIAL TOOL: AIO DOWNLOADER
@@ -5862,6 +5902,295 @@ function openAioVideoPreview(videoUrl, title) {
   document.addEventListener("keydown", function escHandler(e) {
     if (e.key === "Escape") { close(); document.removeEventListener("keydown", escHandler); }
   });
+}
+
+/* =========================================================
+   IQC GENERATOR — Custom Tool UI (3 Field Input)
+   ========================================================= */
+function renderIqcGeneratorTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const wrap = document.createElement("div");
+  wrap.className = "iqc-custom-ui";
+
+  // ── Field 1: Teks ──
+  const textGroup = document.createElement("div");
+  textGroup.className = "iqc-field-group";
+  textGroup.innerHTML = `<label>Teks Chat</label>`;
+
+  const textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.className = "iqc-input";
+  textInput.id = "iqcTextInput";
+  textInput.placeholder = "contoh: Halo, apa kabar?";
+  textInput.maxLength = 200;
+  textInput.autocomplete = "off";
+  textGroup.append(textInput);
+
+  const textHint = document.createElement("span");
+  textHint.className = "iqc-input-hint";
+  textHint.textContent = "Maksimal 200 karakter";
+  textGroup.append(textHint);
+  wrap.append(textGroup);
+
+  // ── Row: Jam + Baterai side-by-side ──
+  const rowGroup = document.createElement("div");
+  rowGroup.className = "iqc-row";
+
+  // Field 2: Jam
+  const jamGroup = document.createElement("div");
+  jamGroup.className = "iqc-field-group iqc-field-half";
+  jamGroup.innerHTML = `<label>Jam</label>`;
+
+  const jamInput = document.createElement("input");
+  jamInput.type = "text";
+  jamInput.className = "iqc-input";
+  jamInput.id = "iqcJamInput";
+  jamInput.placeholder = "17.30";
+  jamInput.maxLength = 5;
+  jamInput.inputMode = "numeric";
+  jamInput.autocomplete = "off";
+  jamGroup.append(jamInput);
+
+  const jamHint = document.createElement("span");
+  jamHint.className = "iqc-input-hint";
+  jamHint.textContent = "Format HH.MM";
+  jamGroup.append(jamHint);
+
+  // Field 3: Baterai
+  const batreGroup = document.createElement("div");
+  batreGroup.className = "iqc-field-group iqc-field-half";
+  batreGroup.innerHTML = `<label>Baterai</label>`;
+
+  const batreInput = document.createElement("input");
+  batreInput.type = "number";
+  batreInput.className = "iqc-input";
+  batreInput.id = "iqcBatreInput";
+  batreInput.placeholder = "78";
+  batreInput.min = "0";
+  batreInput.max = "100";
+  batreInput.inputMode = "numeric";
+  batreInput.autocomplete = "off";
+  batreGroup.append(batreInput);
+
+  const batreHint = document.createElement("span");
+  batreHint.className = "iqc-input-hint";
+  batreHint.textContent = "0 - 100%";
+  batreGroup.append(batreHint);
+
+  rowGroup.append(jamGroup, batreGroup);
+  wrap.append(rowGroup);
+
+  // ── Tombol Generate ──
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "iqc-gen-btn";
+  genBtn.id = "iqcGenBtn";
+  genBtn.innerHTML = `
+    <span class="iqc-gen-icon">📱</span>
+    <span class="iqc-gen-text">GENERATE IMAGE</span>
+    <span class="iqc-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runIqcGenerate(genBtn));
+  wrap.append(genBtn);
+
+  const hint = document.createElement("p");
+  hint.className = "iqc-hint";
+  hint.textContent = "💡 Hasil berupa gambar screenshot chat iPhone yang siap di-download.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // Auto-focus
+  setTimeout(() => textInput.focus({ preventScroll: true }), 200);
+
+  // Auto-format jam (otomatis tambah titik)
+  jamInput.addEventListener("input", (e) => {
+    let v = e.target.value.replace(/[^\d]/g, "");
+    if (v.length > 4) v = v.slice(0, 4);
+    if (v.length >= 3) {
+      v = v.slice(0, 2) + "." + v.slice(2);
+    } else if (v.length === 2 && !e.target.value.includes(".")) {
+      // Biarin user ngetik titik manual
+    }
+    e.target.value = v;
+  });
+
+  // Enter key trigger dari field apapun
+  [textInput, jamInput, batreInput].forEach(inp => {
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        genBtn.click();
+      }
+    });
+  });
+}
+
+/* ===== Execute IQC Generate ===== */
+async function runIqcGenerate(btnEl) {
+  const teks = document.getElementById("iqcTextInput")?.value?.trim() || "";
+  const jam = document.getElementById("iqcJamInput")?.value?.trim() || "";
+  const batreStr = document.getElementById("iqcBatreInput")?.value?.trim() || "";
+  const batre = parseInt(batreStr, 10);
+
+  // ── Validasi ──
+  if (!teks) {
+    showMessage("Isi teks chat dulu.", "error");
+    return;
+  }
+  if (teks.length > 200) {
+    showMessage("Teks chat maksimal 200 karakter.", "error");
+    return;
+  }
+
+  if (!jam) {
+    showMessage("Isi jam dulu (format HH.MM).", "error");
+    return;
+  }
+  if (!/^\d{2}\.\d{2}$/.test(jam)) {
+    showMessage("Format jam harus HH.MM (contoh: 17.30).", "error");
+    return;
+  }
+  const [h, m] = jam.split(".").map(Number);
+  if (h < 0 || h > 23 || m < 0 || m > 59) {
+    showMessage("Jam tidak valid. Range: 00.00 - 23.59", "error");
+    return;
+  }
+
+  if (!Number.isFinite(batre)) {
+    showMessage("Isi baterai dulu (angka 0-100).", "error");
+    return;
+  }
+  if (batre < 0 || batre > 100) {
+    showMessage("Baterai harus antara 0 - 100.", "error");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="iqc-gen-icon">⏳</span>
+      <span class="iqc-gen-text">PROCESSING...</span>
+      <span class="iqc-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang membuat screenshot chat...", "loading");
+
+  try {
+    const token = await ensureSession();
+
+    let res = await fetch("/api/iqc-generator", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify({
+        teks,
+        jam,
+        batre
+      }),
+    });
+
+    if (res.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      res = await fetch("/api/iqc-generator", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh,
+        },
+        body: JSON.stringify({
+          teks,
+          jam,
+          batre
+        }),
+      });
+    }
+
+    if (!res.ok) {
+      let message = `Request gagal (HTTP ${res.status}).`;
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const err = await res.json();
+        message = err.error || message;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = objectUrl;
+
+    // ── Render Result ──
+    resultArea.replaceChildren();
+    resultShell.hidden = false;
+
+    const card = document.createElement("article");
+    card.className = "iqc-result-card";
+
+    const imageWrap = document.createElement("div");
+    imageWrap.className = "iqc-result-image-wrap";
+
+    const img = document.createElement("img");
+    img.className = "iqc-result-img";
+    img.src = objectUrl;
+    img.alt = `IQC Screenshot - ${teks}`;
+    img.loading = "lazy";
+    imageWrap.append(img);
+
+    const meta = document.createElement("div");
+    meta.className = "iqc-result-meta";
+
+    const info = document.createElement("div");
+    info.className = "iqc-result-info";
+    info.innerHTML = `
+      <strong>📱 IQC Screenshot</strong>
+      <span>${escapeHtml(teks.slice(0, 60))}${teks.length > 60 ? "..." : ""}</span>
+      <span class="iqc-result-detail">⏰ ${escapeHtml(jam)} · 🔋 ${batre}%</span>
+    `;
+
+    const actions = document.createElement("div");
+    actions.className = "iqc-result-actions";
+
+    const download = document.createElement("a");
+    download.className = "download-btn";
+    download.href = objectUrl;
+    download.download = `xavrels-iqc-${Date.now()}.jpg`;
+    download.textContent = "↓ SIMPAN GAMBAR";
+    actions.append(download);
+
+    meta.append(info, actions);
+    card.append(imageWrap, meta);
+    resultArea.append(card);
+
+    const note = $("#resultHeadingNote");
+    if (note) note.textContent = "Berhasil generate";
+
+  } catch (err) {
+    console.error("[IQC] Error:", err.message);
+    showMessage(err.message || "Gagal generate image. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="iqc-gen-icon">📱</span>
+        <span class="iqc-gen-text">GENERATE IMAGE</span>
+        <span class="iqc-gen-arrow">↗</span>
+      `;
+    }
+  }
 }
 
 /* =========================================================
