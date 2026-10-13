@@ -252,6 +252,15 @@ faceswap: {
   label: "Direct image URL (HTTPS)", placeholder: "https://example.com/photo.jpg", inputType: "url",
   endpoint: "api/to-blur", button: "APPLY BLUR",
   supportsUpload: true
+},
+"aio-downloader": {
+  title: "AIO DOWNLOADER", titleLead: "AIO", titleAccent: "DOWNLOADER", issue: "TOOL 16", number: "16",
+  category: "DOWNLOAD LAB", icon: "📥",
+  description: "Download video & audio dari TikTok, Instagram, YouTube, Facebook, Twitter, dan platform lainnya.",
+  tip: "Paste link video dari platform manapun — API akan otomatis mendeteksi platform-nya.",
+  label: "Link video (HTTPS)", placeholder: "https://vt.tiktok.com/... atau https://www.instagram.com/...", inputType: "url",
+  endpoint: "api/aio-downloader", button: "DOWNLOAD",
+  supportsUpload: false
 }
 };
 
@@ -2765,6 +2774,37 @@ function openTool(key, updateHistory = true) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
+  
+  // ═══════════════════════════════════════════════
+// SPECIAL TOOL: AIO DOWNLOADER
+// ═══════════════════════════════════════════════
+if (key === "aio-downloader") {
+  $("#workspaceIssue").textContent = info.issue;
+  $("#workspaceIcon").textContent = info.icon;
+  $("#workspaceCategory").textContent = info.category;
+  $("#workspaceDecoNumber").textContent = info.number;
+
+  const aioTitleEl = $("#workspaceTitle");
+  aioTitleEl.replaceChildren();
+  const lead = document.createElement("span"); lead.textContent = info.titleLead;
+  const accent = document.createElement("span"); accent.className = "title-accent"; accent.textContent = info.titleAccent;
+  aioTitleEl.append(lead, document.createTextNode(" "), accent);
+
+  $("#workspaceDescription").textContent = info.description;
+  $("#workspaceTip").textContent = info.tip;
+  $("#panelNumber").textContent = info.number;
+
+  renderAioDownloaderTool();
+
+  clearResult();
+  fpresetSearchState = null;
+  fpresetInDetailView = false;
+  document.title = `${info.title} — XAVRELS MULTITOOLS`;
+
+  if (updateHistory && location.hash !== `#tool/${key}`) location.hash = `tool/${key}`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  return;
+}
   
   // ═══════════════════════════════════════════════
 // SPECIAL TOOL: TO BLUR (dengan Before/After UI)
@@ -5463,6 +5503,365 @@ async function runToBlurGenerate(btnEl) {
       `;
     }
   }
+}
+
+/* =========================================================
+   AIO DOWNLOADER — Custom Tool UI
+   ========================================================= */
+function renderAioDownloaderTool() {
+  const formEl = document.getElementById("toolForm");
+  if (!formEl) return;
+
+  formEl.replaceChildren();
+
+  const wrap = document.createElement("div");
+  wrap.className = "aio-custom-ui";
+
+  // ── Field URL ──
+  const urlGroup = document.createElement("div");
+  urlGroup.className = "aio-field-group";
+  urlGroup.innerHTML = `<label>Link Video / Audio (HTTPS)</label>`;
+
+  const urlInput = document.createElement("input");
+  urlInput.type = "url";
+  urlInput.className = "aio-input";
+  urlInput.id = "aioUrlInput";
+  urlInput.placeholder = "https://vt.tiktok.com/... atau https://www.instagram.com/...";
+  urlInput.autocomplete = "url";
+  urlGroup.append(urlInput);
+  wrap.append(urlGroup);
+
+  // ── Tombol Download ──
+  const genBtn = document.createElement("button");
+  genBtn.type = "button";
+  genBtn.className = "aio-gen-btn";
+  genBtn.id = "aioGenBtn";
+  genBtn.innerHTML = `
+    <span class="aio-gen-icon">📥</span>
+    <span class="aio-gen-text">DOWNLOAD</span>
+    <span class="aio-gen-arrow">↗</span>
+  `;
+  genBtn.addEventListener("click", () => runAioDownload(genBtn));
+  wrap.append(genBtn);
+
+  // ── Hint ──
+  const hint = document.createElement("p");
+  hint.className = "aio-hint";
+  hint.textContent = "💡 Support: TikTok · Instagram · YouTube · Facebook · Twitter · dan lainnya.";
+  wrap.append(hint);
+
+  formEl.append(wrap);
+
+  // Auto-focus
+  setTimeout(() => urlInput.focus({ preventScroll: true }), 200);
+
+  // Enter trigger
+  urlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      genBtn.click();
+    }
+  });
+}
+
+/* ===== Execute AIO Download ===== */
+async function runAioDownload(btnEl) {
+  const url = document.getElementById("aioUrlInput")?.value?.trim() || "";
+
+  if (!url) {
+    showMessage("Isi link video dulu.", "error");
+    return;
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    showMessage("URL tidak valid. Harus mulai dengan http:// atau https://", "error");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `
+      <span class="aio-gen-icon">⏳</span>
+      <span class="aio-gen-text">PROCESSING...</span>
+      <span class="aio-gen-arrow">⏳</span>
+    `;
+  }
+
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+  showMessage("Sedang mengambil video...", "loading");
+
+  try {
+    const token = await ensureSession();
+
+    let res = await fetch("/api/aio-downloader", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Session-Token": token,
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    if (res.status === 401) {
+      sessionToken = null;
+      sessionExpiresAt = 0;
+      const fresh = await ensureSession();
+      res = await fetch("/api/aio-downloader", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Token": fresh,
+        },
+        body: JSON.stringify({ url }),
+      });
+    }
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || `Request gagal (HTTP ${res.status}).`);
+    }
+
+    renderAioResult(data.result || {});
+
+  } catch (err) {
+    console.error("[AIO] Error:", err.message);
+    showMessage(err.message || "Gagal mengambil video. Coba lagi.", "error");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = `
+        <span class="aio-gen-icon">📥</span>
+        <span class="aio-gen-text">DOWNLOAD</span>
+        <span class="aio-gen-arrow">↗</span>
+      `;
+    }
+  }
+}
+
+/* ===== Render AIO Result ===== */
+function renderAioResult(item) {
+  resultShell.hidden = false;
+  resultArea.replaceChildren();
+
+  const card = document.createElement("article");
+  card.className = "aio-result-card";
+
+  // ── Hero (Thumbnail + Platform + Title) ──
+  const hero = document.createElement("div");
+  hero.className = "aio-hero";
+
+  if (item.thumbnail) {
+    const bg = document.createElement("div");
+    bg.className = "aio-hero-bg";
+    bg.style.backgroundImage = `url("${item.thumbnail}")`;
+    hero.append(bg);
+  }
+
+  const heroOverlay = document.createElement("div");
+  heroOverlay.className = "aio-hero-overlay";
+
+  const thumbBox = document.createElement("div");
+  thumbBox.className = "aio-hero-thumb";
+
+  if (item.thumbnail) {
+    const img = document.createElement("img");
+    img.src = item.thumbnail;
+    img.alt = "Thumbnail";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    thumbBox.append(img);
+  } else {
+    thumbBox.textContent = "🎬";
+  }
+
+  heroOverlay.append(thumbBox);
+
+  const heroInfo = document.createElement("div");
+  heroInfo.className = "aio-hero-info";
+
+  // Platform badge
+  if (item.platform) {
+    const platformBadge = document.createElement("span");
+    platformBadge.className = "aio-platform-badge";
+    platformBadge.textContent = `📱 ${item.platform}`;
+    heroInfo.append(platformBadge);
+  }
+
+  // Title
+  const title = document.createElement("h3");
+  title.className = "aio-hero-title";
+  title.textContent = item.title || "Untitled";
+  heroInfo.append(title);
+
+  // Meta row (duration)
+  const metaRow = document.createElement("div");
+  metaRow.className = "aio-hero-meta";
+
+  if (item.duration) {
+    const dur = document.createElement("span");
+    dur.className = "aio-meta-chip";
+    dur.innerHTML = `◷ <b>${item.duration}</b>`;
+    metaRow.append(dur);
+  }
+
+  if (item.from_cache) {
+    const cached = document.createElement("span");
+    cached.className = "aio-meta-chip aio-meta-cached";
+    cached.innerHTML = `⚡ <b>From Cache</b>`;
+    metaRow.append(cached);
+  }
+
+  if (metaRow.children.length) heroInfo.append(metaRow);
+
+  heroOverlay.append(heroInfo);
+  hero.append(heroOverlay);
+  card.append(hero);
+
+  // ── Downloads List ──
+  const downloads = Array.isArray(item.downloads) ? item.downloads : [];
+
+  if (downloads.length) {
+    const listWrap = document.createElement("div");
+    listWrap.className = "aio-downloads";
+
+    const listTitle = document.createElement("div");
+    listTitle.className = "aio-downloads-title";
+    listTitle.innerHTML = `⬇ <strong>PILIH FORMAT DOWNLOAD</strong> <span>(${downloads.length})</span>`;
+    listWrap.append(listTitle);
+
+    downloads.forEach((d, i) => {
+      const row = document.createElement("div");
+      row.className = "aio-download-item";
+
+      // Icon berdasarkan type
+      const typeIcon = document.createElement("div");
+      typeIcon.className = "aio-download-icon";
+      if (d.type === "audio") {
+        typeIcon.textContent = "🎵";
+        typeIcon.classList.add("is-audio");
+      } else {
+        typeIcon.textContent = "🎬";
+        typeIcon.classList.add("is-video");
+      }
+
+      // Body
+      const body = document.createElement("div");
+      body.className = "aio-download-body";
+
+      const label = document.createElement("strong");
+      label.textContent = d.label || d.quality || d.type || `Format ${i + 1}`;
+      body.append(label);
+
+      const meta = document.createElement("span");
+      meta.className = "aio-download-meta";
+      const bits = [];
+      if (d.quality && d.quality !== d.label) bits.push(d.quality);
+      if (d.type) bits.push(d.type.toUpperCase());
+      meta.textContent = bits.join(" · ");
+      if (bits.length) body.append(meta);
+
+      // Actions
+      const actions = document.createElement("div");
+      actions.className = "aio-download-actions";
+
+      // Tombol Preview (kalau video)
+      if (d.type === "video" && d.url) {
+        const previewBtn = document.createElement("button");
+        previewBtn.type = "button";
+        previewBtn.className = "aio-preview-btn";
+        previewBtn.innerHTML = `▶ <span>PREVIEW</span>`;
+        previewBtn.addEventListener("click", () => openAioVideoPreview(d.url, d.label || "Video"));
+        actions.append(previewBtn);
+      }
+
+      // Tombol Download
+      const downloadLink = document.createElement("a");
+      downloadLink.className = "aio-download-link";
+      downloadLink.href = d.url;
+      downloadLink.target = "_blank";
+      downloadLink.rel = "noopener noreferrer";
+      downloadLink.setAttribute("download", "");
+      downloadLink.innerHTML = `⬇ <span>DOWNLOAD</span>`;
+      actions.append(downloadLink);
+
+      row.append(typeIcon, body, actions);
+      listWrap.append(row);
+    });
+
+    card.append(listWrap);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "aio-empty";
+    empty.textContent = "⚠️ Tidak ada link download yang tersedia untuk video ini.";
+    card.append(empty);
+  }
+
+  resultArea.append(card);
+
+  const note = $("#resultHeadingNote");
+  if (note) note.textContent = `${downloads.length} format tersedia`;
+}
+
+/* ===== Video Preview Modal ===== */
+function openAioVideoPreview(videoUrl, title) {
+  const old = document.getElementById("aioPreviewModal");
+  if (old) old.remove();
+
+  const modal = document.createElement("div");
+  modal.className = "aio-preview-backdrop";
+  modal.id = "aioPreviewModal";
+
+  modal.innerHTML = `
+    <div class="aio-preview-card">
+      <button class="aio-preview-close" aria-label="Tutup">✕</button>
+      <div class="aio-preview-header">
+        <span class="aio-preview-title">🎬 ${title}</span>
+        <span class="aio-preview-hint">Preview video</span>
+      </div>
+      <div class="aio-preview-stage">
+        <video
+          class="aio-preview-video"
+          src="${videoUrl}"
+          controls
+          autoplay
+          playsinline
+          preload="metadata"
+          crossorigin="anonymous"
+        ></video>
+      </div>
+      <div class="aio-preview-actions">
+        <a class="download-btn" href="${videoUrl}" target="_blank" rel="noopener noreferrer" download>↓ SIMPAN VIDEO</a>
+      </div>
+    </div>
+  `;
+
+  document.body.append(modal);
+  document.body.style.overflow = "hidden";
+
+  const video = modal.querySelector(".aio-preview-video");
+
+  video.addEventListener("error", () => {
+    const stage = modal.querySelector(".aio-preview-stage");
+    if (stage) {
+      stage.innerHTML = `<div style="padding:24px;text-align:center;color:#fff;font-size:13px;line-height:1.6;">❌ Preview gagal dimuat.<br/><span style="font-size:11px;opacity:.7;">Klik tombol SIMPAN VIDEO di bawah untuk download langsung.</span></div>`;
+    }
+  });
+
+  function close() {
+    video.pause();
+    document.body.style.overflow = "";
+    modal.style.animation = "aioFadeOut 0.2s ease forwards";
+    const card = modal.querySelector(".aio-preview-card");
+    if (card) card.style.animation = "aioPopOut 0.2s ease forwards";
+    setTimeout(() => modal.remove(), 200);
+  }
+
+  modal.querySelector(".aio-preview-close").addEventListener("click", close);
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
+  document.addEventListener("keydown", function escHandler(e) {
+    if (e.key === "Escape") { close(); document.removeEventListener("keydown", escHandler); }
+  });
 }
 
 /* =========================================================

@@ -1951,6 +1951,91 @@ app.post(
 );
 
 /* ============================================================
+   /api/aio-downloader — All-in-One Social Media Downloader
+   ============================================================ */
+const AIO_API_BASE = "https://api-faa.my.id/faa/aio";
+
+app.post("/api/aio-downloader", requireAuth, async (req, res) => {
+  try {
+    // ── LAYER 1: Bot detection ──
+    if (isLikelyBot(req)) {
+      console.log(`🚫 [/api/aio-downloader] Bot detected`);
+      return res.status(403).json({ ok: false, error: "Akses ditolak." });
+    }
+
+    // ── LAYER 2: Rate limit (5/menit) ──
+    const identifier = req.ip || "unknown";
+    const limit = checkEndpointLimit(identifier, "aio-downloader", 5);
+    if (!limit.ok) {
+      res.set("Retry-After", String(Math.ceil((limit.resetAt - Date.now()) / 1000)));
+      return res.status(429).json({ ok: false, error: "Terlalu banyak request. Tunggu sebentar." });
+    }
+
+    // ── LAYER 3: Input validation ──
+    const rawUrl = safeText(req.body?.url, 1500);
+    if (!rawUrl) throw new Error("Masukkan link video.");
+
+    // Validasi URL (harus HTTPS, bukan privat)
+    const inputUrl = validatePublicHttpsUrl(rawUrl);
+
+    // ── LAYER 4: Hit provider ──
+    console.log(`📡 [/api/aio-downloader] Processing: ${inputUrl}`);
+    const response = await http.get(AIO_API_BASE, {
+      params: { url: inputUrl },
+      timeout: 60_000,
+      maxContentLength: 15 * 1024 * 1024,
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "application/json, */*"
+      }
+    });
+
+    // ── LAYER 5: Validate response ──
+    const data = response.data;
+    if (!data || data.status !== true) {
+      throw new Error(data?.message || data?.error || "Provider gagal mengambil video.");
+    }
+
+    const r = data.result || {};
+
+    // Sanitize downloads array
+    const downloads = Array.isArray(r.downloads)
+      ? r.downloads
+          .filter((d) => d?.url && typeof d.url === "string" && /^https?:\/\//i.test(d.url))
+          .map((d) => ({
+            label: safeText(String(d.label || ""), 60),
+            quality: safeText(String(d.quality || ""), 40),
+            type: safeText(String(d.type || ""), 20),
+            url: safeText(d.url, 3000)
+          }))
+      : [];
+
+    if (!downloads.length) {
+      throw new Error("Provider tidak mengembalikan link download yang valid.");
+    }
+
+    const result = {
+      title: safeText(String(r.title || ""), 300),
+      thumbnail: typeof r.thumbnail === "string" && /^https?:\/\//i.test(r.thumbnail)
+        ? safeText(r.thumbnail, 2000)
+        : "",
+      platform: safeText(String(r.platform || ""), 40),
+      duration: safeText(String(r.duration || ""), 40),
+      downloads,
+      from_cache: r.from_cache === true
+    };
+
+    // ── LAYER 6: Return ──
+    res.set("Cache-Control", "no-store");
+    res.json({ ok: true, result });
+
+  } catch (err) {
+    console.error("❌ [/api/aio-downloader]", err.message);
+    sendError(res, err);
+  }
+});
+
+/* ============================================================
    /api/faceswap — Face Swap AI (via jerexd API)
    ============================================================ */
 const FACESWAP_API_BASE = "https://api.jerexd.my.id/api/ai/faceswap";
