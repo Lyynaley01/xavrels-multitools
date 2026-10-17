@@ -31,6 +31,43 @@ let sessionToken = null;
 let sessionExpiresAt = 0;
 let sessionPromise = null;
 
+async function getTurnstileTokenIfConfigured() {
+  try {
+    const cfgRes = await fetch("/api/config", { headers: { "Accept": "application/json" }, cache: "no-store" });
+    const cfg = cfgRes.ok ? await cfgRes.json() : null;
+    if (!cfg?.turnstileSiteKey) return null;
+    if (!window.turnstile) throw new Error("Turnstile belum termuat. Muat ulang halaman.");
+    return await new Promise((resolve, reject) => {
+      const holder = document.createElement("div");
+      holder.setAttribute("aria-hidden", "true");
+      holder.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;overflow:hidden";
+      document.body.appendChild(holder);
+      let settled = false;
+      const finish = (fn, value) => {
+        if (settled) return;
+        settled = true;
+        try { window.turnstile.remove(widgetId); } catch {}
+        holder.remove();
+        fn(value);
+      };
+      let widgetId;
+      try {
+        widgetId = window.turnstile.render(holder, {
+          sitekey: cfg.turnstileSiteKey,
+          size: "invisible",
+          callback: token => finish(resolve, token),
+          "error-callback": () => finish(reject, new Error("Verifikasi keamanan gagal.")),
+          "expired-callback": () => finish(reject, new Error("Verifikasi kedaluwarsa. Coba lagi."))
+        });
+        window.turnstile.execute(widgetId);
+      } catch (error) { finish(reject, error); }
+    });
+  } catch (error) {
+    console.error("[SECURITY] Turnstile:", error.message);
+    throw error;
+  }
+}
+
 async function ensureSession() {
   const now = Date.now();
   if (sessionToken && sessionExpiresAt > now + 30_000) return sessionToken;
@@ -38,9 +75,12 @@ async function ensureSession() {
 
   sessionPromise = (async () => {
     try {
+      const turnstileToken = await getTurnstileTokenIfConfigured();
       const res = await fetch("/api/session", {
         method: "POST",
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json", ...(turnstileToken ? { "Content-Type": "application/json" } : {}) },
+        body: turnstileToken ? JSON.stringify({ turnstileToken }) : undefined,
+        cache: "no-store"
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

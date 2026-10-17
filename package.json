@@ -2,7 +2,7 @@
   "name": "xavrels-multitools",
   "version": "1.0.0",
   "private": true,
-  "description": "Spider-comic inspired multi tools web app with server-side API proxy",
+  "description": "Hardened Spider-comic inspired Xavrels MultiTools web app",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,15 +13,12 @@
   },
   "dependencies": {
     "@vercel/kv": "^2.0.0",
-    "axios": "^1.7.9",
-    "express": "^4.22.3",
-    "express-rate-limit": "^7.5.0",
-    "form-data": "^4.0.1",
-    "helmet": "^8.0.0",
-    "multer": "^2.4.0",
-    "sharp": "^0.33.5"
-  },
-  "allowScripts": {
-    "sharp@0.33.5": true
+    "axios": "^1.x.x",
+    "express": "^4.x.x",
+    "express-rate-limit": "^7.x.x",
+    "form-data": "^4.x.x",
+    "helmet": "^7.x.x",
+    "multer": "^2.0.2",
+    "sharp": "^0.34.3"
   }
 }
