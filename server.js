@@ -5,8 +5,6 @@ const rateLimit = require("express-rate-limit");
 const multer = require("multer");
 const FormData = require("form-data");
 const crypto = require("crypto");
-const dns = require("dns").promises;
-const net = require("net");
 const path = require("path");  // ← ini udah ada
 const fs = require("fs");      // ← TAMBAH kalau belum
 const { kv } = require("@vercel/kv");
@@ -14,20 +12,18 @@ const { handleTelegramUpdate } = require("./telegram-bot");
 
 const app = express();
 app.disable("x-powered-by");
-// Vercel sits behind one trusted proxy hop. For other deployments, configure TRUST_PROXY explicitly.
-const TRUST_PROXY = process.env.TRUST_PROXY;
-app.set("trust proxy", TRUST_PROXY === undefined ? 1 : TRUST_PROXY === "false" ? false : Number(TRUST_PROXY) || 1);
+app.set("trust proxy", 1);
 
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://challenges.cloudflare.com"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "https://i.scdn.co"],
-      connectSrc: ["'self'", "https://challenges.cloudflare.com"],
-      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://challenges.cloudflare.com"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
       mediaSrc: ["'self'", "https:", "blob:"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
@@ -38,23 +34,11 @@ app.use(helmet({
 }));
 
 app.use(express.json({ limit: "32kb" }));
-const apiLimiter = rateLimit({
+app.use("/api/", rateLimit({
   windowMs: 60_000,
-  limit: Number(process.env.API_RATE_LIMIT_PER_MINUTE || 40),
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { ok: false, error: "Terlalu banyak request. Coba lagi sebentar." },
-  skip: (req) => req.path === "/health"
-});
-app.use("/api/", apiLimiter);
-
-// Session issuance is a sensitive public entry point; limit it separately too.
-app.use("/api/session", rateLimit({
-  windowMs: 60_000,
-  limit: Number(process.env.SESSION_RATE_LIMIT_PER_MINUTE || 8),
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { ok: false, error: "Terlalu banyak permintaan session. Coba lagi sebentar." }
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false
 }));
 app.use(express.static(path.join(__dirname, "public"), { etag: true, maxAge: "1h" }));
 
@@ -90,11 +74,10 @@ if (!MASTER_API_KEY) console.warn("⚠️  MASTER_API_KEY belum di-set.");
    SIGNED SESSION TOKEN (Stateless — works on serverless)
    ============================================================ */
 const SESSION_SECRET = process.env.SESSION_SECRET || "";
-if (SESSION_SECRET.length < 32) {
-  console.error("❌ SESSION_SECRET wajib diisi dengan secret acak minimal 32 karakter. Set di environment deployment.");
+if (!SESSION_SECRET) {
+  console.warn("⚠️  SESSION_SECRET belum di-set — fallback ke random per-process (session gak akan persisten!)");
 }
-// Do not silently generate a per-instance secret: serverless instances would disagree on tokens.
-const ACTIVE_SESSION_SECRET = SESSION_SECRET;
+const ACTIVE_SESSION_SECRET = SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 
 const SESSION_TTL_MS = 10 * 60 * 1000;
 
@@ -103,12 +86,10 @@ const SESSION_TTL_MS = 10 * 60 * 1000;
  * payload: { ip, ua, exp }
  */
 function createSignedToken(req) {
-  if (ACTIVE_SESSION_SECRET.length < 32) throw new Error("Session secret belum dikonfigurasi dengan aman.");
   const payload = {
     ip: req.ip || "unknown",
-    ua: (req.headers["user-agent"] || "").slice(0, 180),
-    exp: Date.now() + SESSION_TTL_MS,
-    v: 2
+    ua: (req.headers["user-agent"] || "").slice(0, 60),
+    exp: Date.now() + SESSION_TTL_MS
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = crypto
@@ -119,9 +100,7 @@ function createSignedToken(req) {
 }
 
 function validateSignedToken(req) {
-  if (ACTIVE_SESSION_SECRET.length < 32) return { ok: false, reason: "Session secret belum dikonfigurasi" };
-  // Tokens in query strings leak into logs, browser history, and referrer headers. Header only.
-  const token = req.headers["x-session-token"];
+  const token = req.headers["x-session-token"] || req.query?.token;
   if (!token || typeof token !== "string") return { ok: false, reason: "Token tidak ada" };
 
   const parts = token.split(".");
@@ -148,17 +127,16 @@ function validateSignedToken(req) {
     payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
   } catch { return { ok: false, reason: "Payload corrupt" }; }
 
-  // Check expiry, version, and client binding. UA binding is not identity/authentication,
-  // but makes stolen tokens less reusable by a different client.
-  if (!payload.exp || !Number.isFinite(payload.exp) || Date.now() > payload.exp) {
+  // Check expiry
+  if (!payload.exp || Date.now() > payload.exp) {
     return { ok: false, reason: "Token expired" };
   }
-  if (payload.v !== 2) return { ok: false, reason: "Versi token tidak didukung" };
-  const currentUa = (req.headers["user-agent"] || "").slice(0, 180);
-  if (payload.ua !== currentUa) return { ok: false, reason: "Client tidak cocok" };
-  if (String(process.env.SESSION_BIND_IP || "false").toLowerCase() === "true") {
-    const currentIp = req.ip || "unknown";
-    if (!payload.ip || payload.ip !== currentIp) return { ok: false, reason: "IP tidak cocok" };
+
+  // Optional: cek IP (bisa dimatiin kalau mobile user sering ganti IP)
+  const currentIp = req.ip || "unknown";
+  if (payload.ip && payload.ip !== currentIp && payload.ip !== "unknown") {
+    // ⚠️ Kalau mau strict, uncomment baris di bawah:
+    // return { ok: false, reason: "IP tidak cocok" };
   }
 
   return { ok: true, payload };
@@ -279,74 +257,55 @@ function attachPublicWarningHeader(res) {
 /* ============================================================
    /api/session
    ============================================================ */
-/* ===== Exact origin allowlist ===== */
-function getAllowedOrigins() {
-  const defaults = process.env.NODE_ENV === "production"
-    ? "https://xavrels-multitools.vercel.app"
-    : "https://xavrels-multitools.vercel.app,http://localhost:3000,http://127.0.0.1:3000";
-  const configured = (process.env.PUBLIC_APP_ORIGINS || defaults)
-    .split(",").map((value) => value.trim()).filter(Boolean);
-  return [...new Set(configured.map((value) => {
-    const u = new URL(value);
-    if (!(["https:", "http:"].includes(u.protocol)) || u.username || u.password || u.pathname !== "/" || u.search || u.hash) {
-      throw new Error("PUBLIC_APP_ORIGINS harus berisi origin saja, misalnya https://example.com");
-    }
-    return u.origin;
-  }))];
-}
-
+/* ===== Strict origin validation ===== */
 function isAllowedRequestOrigin(origin, referer, allowedOrigins) {
-  // Browsers send Origin for this POST. Referer is a compatibility fallback only.
-  if (origin) return allowedOrigins.includes(origin);
-  if (referer) {
-    try { return allowedOrigins.includes(new URL(referer).origin); }
-    catch (_) { return false; }
+  // Cek Origin header (paling strict)
+  if (origin) {
+    return allowedOrigins.includes(origin);
   }
+  // Fallback ke Referer (parse hostname persis)
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      const refOrigin = `${refUrl.protocol}//${refUrl.host}`;
+      return allowedOrigins.includes(refOrigin);
+    } catch (_) {
+      return false;
+    }
+  }
+  // Gak ada origin & referer → TOLAK
   return false;
 }
 
-app.post("/api/session", async (req, res) => {
+app.post("/api/session", (req, res) => {
   try {
-    if (ACTIVE_SESSION_SECRET.length < 32) {
-      return res.status(503).json({ ok: false, error: "Session belum dikonfigurasi oleh administrator." });
-    }
-    const allowedOrigins = getAllowedOrigins();
     const origin = req.headers.origin || "";
     const referer = req.headers.referer || "";
+    const host = req.headers.host || "";
+
+    const allowedOrigins = [
+      `https://${host}`, `http://${host}`,
+      "http://localhost:3000", "http://127.0.0.1:3000"
+    ];
+
+    // 🔥 STRICT: wajib ada Origin ATAU Referer yang match persis
     if (!isAllowedRequestOrigin(origin, referer, allowedOrigins)) {
-      console.warn(`[/api/session] Ditolak: origin=${origin || "(none)"}`);
+      console.log(`🚫 [/api/session] Ditolak — origin: "${origin}" referer: "${referer}"`);
       return res.status(403).json({ ok: false, error: "Origin tidak diizinkan." });
     }
-    // Production fails closed unless both Turnstile keys are configured.
-    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || "";
-    const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY || "";
-    if (process.env.NODE_ENV === "production" && (!turnstileSecret || !turnstileSiteKey)) {
-      console.error("[/api/session] Production wajib mengonfigurasi TURNSTILE_SITE_KEY dan TURNSTILE_SECRET_KEY.");
-      return res.status(503).json({ ok: false, error: "Proteksi keamanan belum dikonfigurasi. Hubungi administrator." });
-    }
-    if (Boolean(turnstileSecret) !== Boolean(turnstileSiteKey)) {
-      return res.status(503).json({ ok: false, error: "Konfigurasi verifikasi keamanan belum lengkap." });
-    }
-    if (turnstileSecret) {
-      const turnstileToken = safeText(req.body?.turnstileToken, 4096);
-      if (!turnstileToken) return res.status(403).json({ ok: false, error: "Verifikasi keamanan diperlukan." });
-      const verify = await http.post("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-        secret: turnstileSecret,
-        response: turnstileToken,
-        remoteip: req.ip
-      }, { timeout: 8000, maxRedirects: 0 });
-      if (verify.data?.success !== true) {
-        return res.status(403).json({ ok: false, error: "Verifikasi keamanan gagal. Coba muat ulang halaman." });
-      }
-    }
+
+
     const token = createSignedToken(req);
-    res.set({ "Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache", "Expires": "0", "Vary": "Origin" });
-    return res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.json({ ok: true, token, expiresIn: SESSION_TTL_MS / 1000 });
   } catch (err) {
     console.error("❌ [/api/session]", err.message);
-    return res.status(500).json({ ok: false, error: "Gagal membuat session." });
+    res.status(500).json({ ok: false, error: "Gagal membuat session." });
   }
 });
+
 
 /* ============================================================
    HELPERS
@@ -356,47 +315,20 @@ function safeText(value, max = 180) {
   return value.trim().slice(0, max);
 }
 
-function isPrivateOrReservedIp(address) {
-  const family = net.isIP(address);
-  if (family === 4) {
-    const p = address.split(".").map(Number);
-    const [a, b] = p;
-    return a === 0 || a === 10 || a === 127 || a >= 224 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && (b === 0 || b === 168)) ||
-      (a === 198 && (b === 18 || b === 19 || (b === 51 && p[2] === 100))) ||
-      (a === 203 && b === 0 && p[2] === 113);
-  }
-  if (family === 6) {
-    const ip = address.toLowerCase();
-    // Reject unspecified, loopback, link-local, unique-local, multicast and IPv4-mapped forms.
-    return ip === "::" || ip === "::1" || ip.startsWith("fe8") || ip.startsWith("fe9") ||
-      ip.startsWith("fea") || ip.startsWith("feb") || ip.startsWith("fc") ||
-      ip.startsWith("fd") || ip.startsWith("ff") || ip.startsWith("::ffff:") || ip.startsWith("2001:db8:");
-  }
-  return true;
-}
-
-async function validatePublicHttpsUrl(raw) {
+function validatePublicHttpsUrl(raw) {
   let u;
   try { u = new URL(raw); } catch { throw new Error("URL tidak valid."); }
   if (u.protocol !== "https:") throw new Error("Gunakan URL HTTPS yang aman.");
   if (u.username || u.password) throw new Error("URL dengan username/password tidak diizinkan.");
-  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) {
+  const host = u.hostname.toLowerCase();
+  if (
+    !host || host === "localhost" || host.endsWith(".localhost") ||
+    host.endsWith(".local") || host === "127.0.0.1" || host === "::1" ||
+    /^10\./.test(host) || /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^169\.254\./.test(host) || host === "0.0.0.0"
+  ) {
     throw new Error("URL menuju host privat/lokal tidak diizinkan.");
-  }
-  if (net.isIP(host) && isPrivateOrReservedIp(host)) throw new Error("URL menuju IP privat atau reserved tidak diizinkan.");
-  try {
-    const records = await dns.lookup(host, { all: true, verbatim: true });
-    if (!records.length || records.some((record) => isPrivateOrReservedIp(record.address))) {
-      throw new Error("URL menuju host privat/lokal tidak diizinkan.");
-    }
-  } catch (err) {
-    if (err.message.includes("privat/lokal")) throw err;
-    // DNS failure is fail-closed rather than allowing an unverified destination.
-    throw new Error("Host URL tidak dapat diverifikasi.");
   }
   return u.toString();
 }
@@ -540,10 +472,7 @@ app.get("/api/config", (_req, res) => {
     const u = new URL(candidate);
     if (u.protocol === "https:" && u.hostname === "t.me") telegramBotUrl = u.toString();
   } catch {}
-  res.set("Cache-Control", "no-store").json({
-    telegramBotUrl,
-    turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ""
-  });
+  res.set("Cache-Control", "no-store").json({ telegramBotUrl });
 });
 
 
@@ -556,9 +485,9 @@ app.post("/api/hd", requireAuth, upload.single("image"), async (req, res) => {
     if (req.file) {
       console.log(`📤 [HD] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
       imageUrl = await uploadImageToCdn(req.file.buffer, req.file.originalname || "upload.jpg");
-      imageUrl = await validatePublicHttpsUrl(imageUrl);
+      imageUrl = validatePublicHttpsUrl(imageUrl);
     } else if (req.body?.url) {
-      imageUrl = await validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
     } else {
       throw new Error("Kirim url atau file image.");
     }
@@ -598,10 +527,10 @@ app.post("/api/remove-bg", requireAuth, upload.single("image"), async (req, res)
     if (req.file) {
       console.log(`📤 [RMBG] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
       imageUrl = await uploadImageToCdn(req.file.buffer, req.file.originalname || "upload.jpg");
-      imageUrl = await validatePublicHttpsUrl(imageUrl);
+      imageUrl = validatePublicHttpsUrl(imageUrl);
       console.log(`📤 [RMBG] CDN URL: ${imageUrl}`);
     } else if (req.body?.url) {
-      imageUrl = await validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
       console.log(`📤 [RMBG] Input URL: ${imageUrl}`);
     } else {
       throw new Error("Kirim url atau file image.");
@@ -671,7 +600,7 @@ app.post("/api/pinterest", requireAuth, async (req, res) => {
     // Cache MISS — hit provider
     console.log(`📡 [/api/pinterest] CACHE MISS — fetch provider: "${q}"`);
     const response = await http.get("https://api.ikyyxd.my.id/search/pinterest", {
-      params: { apikey: requireSecret("PINTEREST_API_KEY"), q },
+      params: { apikey: "kyzz", q },
       timeout: 30_000,
       headers: { "User-Agent": BROWSER_UA }
     });
@@ -718,7 +647,7 @@ app.get("/api/stream", requireAuth, async (req, res) => {
     if (!audioUrl) throw new Error("Parameter url wajib.");
 
     // Validasi URL (harus HTTPS, bukan privat)
-    const validUrl = await validatePublicHttpsUrl(audioUrl);
+    const validUrl = validatePublicHttpsUrl(audioUrl);
 
     // Whitelist domain — cuma boleh stream dari provider audio
     const u = new URL(validUrl);
@@ -746,7 +675,6 @@ app.get("/api/stream", requireAuth, async (req, res) => {
     const upstream = await http.get(validUrl, {
       responseType: "stream",
       timeout: 60_000,
-      maxRedirects: 0,
       headers: upstreamHeaders,
       validateStatus: (s) => s >= 200 && s < 400
     });
@@ -844,7 +772,7 @@ const REACT_COST = 1; // 1 coin per reaction
 app.post("/api/react", requireAuth, async (req, res) => {
   try {
     const deviceId = validateDeviceId(req.body?.deviceId);
-    const url = await validatePublicHttpsUrl(safeText(req.body?.url, 1000));
+    const url = validatePublicHttpsUrl(safeText(req.body?.url, 1000));
     const emoji = safeText(req.body?.emoji, 80);
 
     if (!/whatsapp\.com\/channel\//i.test(new URL(url).hostname + new URL(url).pathname)) {
@@ -1099,10 +1027,7 @@ app.post("/api/telegram-webhook", async (req, res) => {
     const secret = req.headers["x-telegram-bot-api-secret-token"];
     const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET || "";
 
-    const suppliedSecret = typeof secret === "string" ? secret : "";
-    const secretMatches = Boolean(expectedSecret) && suppliedSecret.length === expectedSecret.length &&
-      crypto.timingSafeEqual(Buffer.from(suppliedSecret), Buffer.from(expectedSecret));
-    if (!secretMatches) {
+    if (!expectedSecret || secret !== expectedSecret) {
       console.warn("[TG-WEBHOOK] Invalid secret");
       return res.status(403).json({ ok: false });
     }
@@ -1160,6 +1085,24 @@ function fp_isTikTokUrl(value) {
   } catch {
     return false;
   }
+}
+
+function fp_isYouTubeUrl(value) {
+  try {
+    const u = new URL(value);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    return (
+      host === "youtube.com" ||
+      host === "youtu.be" ||
+      host.endsWith(".youtube.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function fp_isValidVideoUrl(value) {
+  return fp_isTikTokUrl(value) || fp_isYouTubeUrl(value);
 }
 
 function fp_extractUrls(value) {
@@ -1283,8 +1226,8 @@ app.post("/api/fpreset", requireAuth, async (req, res) => {
     }
 
     const inputUrl = safeText(req.body?.url, 1000);
-    if (!inputUrl) throw new Error("Masukkan link video TikTok.");
-    if (!fp_isTikTokUrl(inputUrl)) throw new Error("URL harus berupa link TikTok yang valid.");
+    if (!inputUrl) throw new Error("Masukkan link video TikTok atau YouTube.");
+    if (!fp_isValidVideoUrl(inputUrl)) throw new Error("URL harus berupa link TikTok atau YouTube yang valid.");
 
     // Cache (15 menit TTL — video preset gak sering berubah)
     const cacheKey = `fpreset:${inputUrl}`;
@@ -1981,9 +1924,9 @@ app.post(
       if (req.file) {
         console.log(`📤 [TO-BLUR] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
         const uploaded = await uploadImageToCdn(req.file.buffer, req.file.originalname || "image.jpg");
-        imageUrl = await validatePublicHttpsUrl(uploaded);
+        imageUrl = validatePublicHttpsUrl(uploaded);
       } else if (req.body?.url) {
-        imageUrl = await validatePublicHttpsUrl(safeText(req.body.url, 1500));
+        imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
       } else {
         throw new Error("Kirim url atau file image.");
       }
@@ -2153,7 +2096,7 @@ app.post("/api/aio-downloader", requireAuth, async (req, res) => {
     if (!rawUrl) throw new Error("Masukkan link video.");
 
     // Validasi URL (harus HTTPS, bukan privat)
-    const inputUrl = await validatePublicHttpsUrl(rawUrl);
+    const inputUrl = validatePublicHttpsUrl(rawUrl);
 
     // ── LAYER 4: Hit provider ──
     console.log(`📡 [/api/aio-downloader] Processing: ${inputUrl}`);
@@ -2250,21 +2193,21 @@ app.post(
       if (sourceFile) {
         console.log(`📤 [FACESWAP] Upload source: ${sourceFile.originalname} (${sourceFile.size} bytes)`);
         const uploaded = await uploadImageToCdn(sourceFile.buffer, sourceFile.originalname || "source.jpg");
-        sourceUrl = await validatePublicHttpsUrl(uploaded);
+        sourceUrl = validatePublicHttpsUrl(uploaded);
       } else if (req.body?.sourceUrl) {
-        sourceUrl = await validatePublicHttpsUrl(safeText(req.body.sourceUrl, 1500));
+        sourceUrl = validatePublicHttpsUrl(safeText(req.body.sourceUrl, 1500));
       } else if (req.body?.source) {
-        sourceUrl = await validatePublicHttpsUrl(safeText(req.body.source, 1500));
+        sourceUrl = validatePublicHttpsUrl(safeText(req.body.source, 1500));
       }
 
       if (targetFile) {
         console.log(`📤 [FACESWAP] Upload target: ${targetFile.originalname} (${targetFile.size} bytes)`);
         const uploaded = await uploadImageToCdn(targetFile.buffer, targetFile.originalname || "target.jpg");
-        targetUrl = await validatePublicHttpsUrl(uploaded);
+        targetUrl = validatePublicHttpsUrl(uploaded);
       } else if (req.body?.targetUrl) {
-        targetUrl = await validatePublicHttpsUrl(safeText(req.body.targetUrl, 1500));
+        targetUrl = validatePublicHttpsUrl(safeText(req.body.targetUrl, 1500));
       } else if (req.body?.target) {
-        targetUrl = await validatePublicHttpsUrl(safeText(req.body.target, 1500));
+        targetUrl = validatePublicHttpsUrl(safeText(req.body.target, 1500));
       }
 
       if (!sourceUrl) throw new Error("Foto wajah pengganti wajib diisi (URL atau file).");
@@ -2335,6 +2278,9 @@ app.post(
    /api/to-boom — Remove BG + Explosion Composite (1:1)
    ============================================================ */
 const sharp = require("sharp");
+const path = require("path");
+const fs = require("fs");
+
 const TO_BOOM_SIZE = 1080;
 const TO_BOOM_BOX_W = 0.82;
 const TO_BOOM_BOX_H = 0.66;
@@ -2416,9 +2362,9 @@ app.post("/api/to-boom", requireAuth, upload.single("image"), async (req, res) =
     if (req.file) {
       console.log(`📤 [TO-BOOM] Upload: ${req.file.originalname} (${req.file.size} bytes)`);
       const uploaded = await uploadImageToCdn(req.file.buffer, req.file.originalname || "image.jpg");
-      imageUrl = await validatePublicHttpsUrl(uploaded);
+      imageUrl = validatePublicHttpsUrl(uploaded);
     } else if (req.body?.url) {
-      imageUrl = await validatePublicHttpsUrl(safeText(req.body.url, 1500));
+      imageUrl = validatePublicHttpsUrl(safeText(req.body.url, 1500));
     } else {
       throw new Error("Kirim url atau file image.");
     }
