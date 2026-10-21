@@ -1266,7 +1266,8 @@ function renderFpreset(data, targetContainer) {
 
   const nickname = document.createElement("h2");
   nickname.className = "fpreset-nickname";
-  nickname.textContent = item.nickname || item.username || "Creator TikTok";
+  const isYouTubeSource = /youtube\.com|youtu\.be/i.test(item.sourceUrl || "");
+  nickname.textContent = item.nickname || item.username || (isYouTubeSource ? "Creator YouTube" : "Creator TikTok");
   nameRow.append(nickname);
 
   // Verified badge — kalau ada preset verified
@@ -1369,10 +1370,17 @@ function renderFpreset(data, targetContainer) {
 
   /* ===== CAPTION ===== */
   if (item.caption) {
-    const cap = document.createElement("div");
-    cap.className = "fpreset-caption";
-    cap.textContent = item.caption;
-    card.append(cap);
+    // Bersihkan caption dari raw URL yang nyasar masuk teks
+    const cleanCaption = item.caption
+      .replace(/https?:\/\/[^\s]+/g, "")  // hapus URL mentah
+      .replace(/\s{2,}/g, " ")             // collapse spasi ganda
+      .trim();
+    if (cleanCaption) {
+      const cap = document.createElement("div");
+      cap.className = "fpreset-caption";
+      cap.textContent = cleanCaption;
+      card.append(cap);
+    }
   }
 
   /* ===== PRESET LIST ===== */
@@ -1606,7 +1614,9 @@ if (otherLinks.length) {
     open.href = item.sourceUrl;
     open.target = "_blank";
     open.rel = "noopener noreferrer";
-    open.textContent = "▶  BUKA DI TIKTOK";
+
+    const isYouTubeSrc = /youtube\.com|youtu\.be/i.test(item.sourceUrl);
+    open.textContent = isYouTubeSrc ? "▶  BUKA DI YOUTUBE" : "▶  BUKA DI TIKTOK";
     actions.append(open);
   }
 
