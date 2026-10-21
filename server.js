@@ -2278,8 +2278,6 @@ app.post(
    /api/to-boom — Remove BG + Explosion Composite (1:1)
    ============================================================ */
 const sharp = require("sharp");
-const path = require("path");
-const fs = require("fs");
 
 const TO_BOOM_SIZE = 1080;
 const TO_BOOM_BOX_W = 0.82;
